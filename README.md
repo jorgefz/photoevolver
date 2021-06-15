@@ -2,7 +2,16 @@
 
 Evolves a given planet backwards and forward in time, taking into account its internal structure and cooling rate, the energy-limited atmospheric mass loss, and the XUV track of its host star.
 
-# Installation
+## Dependencies
+
+### Mors
+Stellar tracks code by Colin Johnstone (https://github.com/ColinPhilipJohnstone/Mors) described in the paper by Johnstone et al (2020)
+
+### EvapMass
+Thermal evolution code by James Owen (https://github.com/jo276/EvapMass), described in the paper Owen & Campos Estrada (2020). 
+This is already included in this repository, so there's no need to install it.
+
+## Installation
 
 Download this repository somewhere in your machine
 ```bash
@@ -16,7 +25,7 @@ pip install -e photoevolver
 
 The module should now be accessible through python.
 
-# Making a planet
+## Making a planet
 
 ```python
 >>> import photoevolver.photoevolver as ph
