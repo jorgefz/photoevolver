@@ -40,7 +40,7 @@ from its mass and composition (default 1/3 iron, 2/3 rock).
 Here, we obtain a planet with a core of 5 Earth masses, an envelope 1% of the planet's mass, 
 located 0.1 AU from its host star, and aged 10 Myr.
 ```python
->>> p = ph.core.Planet(mcore=5.0, fenv=0.01, dist=0.1, age=10)
+>>> p = Planet(mcore=5.0, fenv=0.01, dist=0.1, age=10)
  Warning: core radius undefined. Will be estimated from its composition (Iron:0.33, Ice:0.00)...
  -> 1.521 Earth radii
 >>> p
