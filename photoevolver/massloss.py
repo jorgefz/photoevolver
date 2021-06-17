@@ -175,7 +175,7 @@ def Kubyshkina18(**kwargs):
     xp = small_delta if Jeans_param < np.exp(eps) else large_delta
     Kappa = xp['zeta'] + xp['theta']*np.log(dist)
     mloss = np.exp(xp['beta']) * (Fxuv)**xp['alpha'][0] * (dist)**xp['alpha'][1] * (rp)**xp['alpha'][2] * (Jeans_param)**Kappa
-    return mloss * 5.28e-12 * 1e-3 # g/s to Earth masses per Myr
+    return mloss * 5.28e-12 * 1e-3 # g/s to M_earth/Myr
 
 
 
