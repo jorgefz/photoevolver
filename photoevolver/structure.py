@@ -15,7 +15,7 @@ import numpy as np
 import astropy.constants as Const
 import astropy.units as U
 
-from EvapMass.planet_structure import solve_structure
+from .EvapMass.planet_structure import solve_structure
 
 # Bolometric flux at Earth (W/m^2)
 Fbol_earth = Const.L_sun.value / (4 * np.pi * (Const.au.value)**2 )

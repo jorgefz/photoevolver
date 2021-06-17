@@ -8,7 +8,7 @@ from copy import deepcopy
 import numpy as np
 import astropy.constants as Const
 
-from EvapMass.planet_structure import mass_to_radius_solid as OwenMassRadiusRelation
+from .EvapMass.planet_structure import mass_to_radius_solid as OwenMassRadiusRelation
 
 class Evolve:
     def forward(planet, mloss, struct, star, time_step=1.0, age_end=1e4, **kwargs):
