@@ -79,16 +79,25 @@ This loads the functions EnergyLimited and Kubyshkina18.
 
 Finally, with your choice of formulations, run the evolver:
 ```python
->>> planet_tracks = Evolve.foward(planet=p, mloss=EnergyLimited, struct=ChenRogers16, star=star)
+>>> planet_tracks = Evolve.forward(planet=p, mloss=EnergyLimited, struct=ChenRogers16, star=star)
 ```
 This runs the simulation with a default time step of 1 Myr, up to an age of 10 Gyr. 
 These can be tweaked with the input keywords 'time\_step' and 'age\_end'. 
 It returns a dictionary 'planet\_tracks' with a set of arrays, tracks, describing 
-the evolution of some planetary parameters (mass, radius, etc), which can be plotted.
+the evolution of some planetary parameters (mass, radius, etc), which can be plotted. 
+To see the available tracks, print the dictionary keys:
+```python
+>>> planet_tracks.keys()
+dict_keys(['Age', 'Lbol', 'Rp', 'Mp'])
+```
 
+Plot the parameters with age to see how they evolve:
 ```python
 >>> import matplotlib.pyplot as plt
 >>> plt.plot(planet_tracks['Age'], planet_tracks['Rp'], 'b-')
 >>> plt.show()
 ```
+
+
+
 
