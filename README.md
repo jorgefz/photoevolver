@@ -27,9 +27,9 @@ The module should now be accessible through python.
 
 ## Usage
 
-First, import package submodules
+First, import the package
 ```python
->>> from photoevolver.core import Planet, Evolve
+>>> import photoevolver as ph
 ```
 
 Then, create a planet by defining some of its physical quantities. 
@@ -40,9 +40,8 @@ from its mass and composition (default 1/3 iron, 2/3 rock).
 Here, we obtain a planet with a core of 5 Earth masses, an envelope 1% of the planet's mass, 
 located 0.1 AU from its host star, and aged 10 Myr.
 ```python
->>> p = Planet(mcore=5.0, fenv=0.01, dist=0.1, age=10)
- Warning: core radius undefined. Will be estimated from its composition (Iron:0.33, Ice:0.00)...
- -> 1.521 Earth radii
+>>> p = ph.core.Planet(mcore=5.0, fenv=0.01, dist=0.1, age=10)
+Warning: core radius undefined. Will be estimated from a mass-radius relation  -> 1.521 Earth radii
 >>> p
 <photoevolver.core.Planet object at 0x7f7e7a35de80>
 
@@ -64,33 +63,24 @@ Here, we define a star with 0.7 solar masses and a rotation period of 13.6 days.
 ```
 
 There are three options to choose from for a planetary interior formulation: 
-Lopez & Fortney (2014), Chen & Rogers (2016), and Owen & Wu (2017), all available in this submodule:
-```python
->>> from photoevolver.structure import *
-```
-This command loads the functions LopezFortney14, ChenRogers16, and OwenWu14.
+Lopez & Fortney (2014) using `ph.structure.LopezFortney14`, Chen & Rogers (2016) using `ph.structure.ChenRogers16`, and Owen & Wu (2017) using `ph.structure.OwenWu17`. Additionally, there are two options for a mass loss formulation: the energy-limited approach (Lecavelier des Etangs 2007, Erkaev 2007) with `ph.massloss.EnergyLimited` and the hydro-based formulation by Kubyshkina et al (2018) with `ph.massloss.Kubyshkina18`.
 
-There are two options for a mass loss formulation: energy-limited (Lecavelier des Etangs 2007, Erkaev 2007) 
-and Kubyshkina et al (2018), obtained with the following submodule:
+Finally, with your choice of formulations, run the evolver :
 ```python
->>> from photoevolver.massloss import *
+>>> planet_tracks = ph.core.evolve_forward(planet=p, mloss=ph.massloss.EnergyLimited, struct=ph.structure.ChenRogers16, star=star)
 ```
-This loads the functions EnergyLimited and Kubyshkina18.
-
-Finally, with your choice of formulations, run the evolver:
-```python
->>> planet_tracks = Evolve.forward(planet=p, mloss=EnergyLimited, struct=ChenRogers16, star=star)
-```
-This runs the simulation with a default time step of 1 Myr, up to an age of 10 Gyr. 
-These can be tweaked with the input keywords 'time\_step' and 'age\_end'. 
+This runs the simulation with a default time step of 1 Myr, up to an age of 10 Gyr.
+These can be tweaked with the input parameters 'time\_step' and 'age\_end', respectively.
 It returns a dictionary 'planet\_tracks' with a set of arrays, tracks, describing 
 the evolution of some planetary parameters (mass, radius, etc), which can be plotted. 
-To see the available tracks, print the dictionary keys:
+
+The planet can also be evolved backwards in time with the function `ph.core.evolve_back`, which requieres the exact same input parameters, with `age_end` being the earliest time to which to de-evolve.
+
+To check the available tracks, print the dictionary keys:
 ```python
 >>> planet_tracks.keys()
 dict_keys(['Age', 'Lbol', 'Rp', 'Mp'])
 ```
-
 Plot the parameters with age to see how they evolve:
 ```python
 >>> import matplotlib.pyplot as plt
