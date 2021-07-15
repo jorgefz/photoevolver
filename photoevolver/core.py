@@ -9,50 +9,80 @@ import numpy as np
 import astropy.constants as Const
 import Mors as mors
 
-from .EvapMass.planet_structure import mass_to_radius_solid as owen_mr_func
-
+from .EvapMass.planet_structure import mass_to_radius_solid as owen_radius
+from .EvapMass.planet_structure import solid_radius_to_mass as owen_mass
 
 # Wrapper for EvapMass M-R relation
 def OwenMassRadiusRelation(**kwargs):
-    # Requires: mass=mcore, Xiron, Xice
-    if 'mass'  not in kwargs.keys(): return None
+    """
+    Input:
+        mass
+        radius
+        Xice
+        Xiron
+    """
+    has_mass = 'mass' in kwargs.keys()
+    has_radius = 'radius' in kwargs.keys()
+    if (has_mass and has_radius) or (not has_mass and not has_radius):
+        print(f" Error: specify either mass or radius")
+        return 0.0
     if 'Xice'  not in kwargs.keys(): kwargs['Xice']  = 0.0
     if 'Xiron' not in kwargs.keys(): kwargs['Xiron'] = 1/3
-    return owen_mr_func(mass=kwargs['mass'], Xiron=kwargs['Xiron'], Xice=kwargs['Xice'])
+    if has_mass: return owen_radius(**kwargs)
+    if has_radius: return owen_mass(**kwargs)[0]
+
 
 def OtegiMassRadiusRelation(**kwargs):
     """
-    Computes radius based on planets mass following the mass-radius
+    Computes mass or radius based on planet's mass following the mass-radius
     relationships by Otegi et al. (2015).
     https://ui.adsabs.harvard.edu/abs/2020A%26A...634A..43O/abstract
     Input:
-            mass 	:(float) Mass in Earth masses
-            otegi_error :(float) Uncertainty of the mass
-            otegi_mode 	:(str) "rocky", "volatile"
+            radius      :(float) Radius in Earth radii
+            mass 	:(float) Mass in Earth masses. Only specify EITHER mass OR radius!!
+            mode 	:(str) "rocky", "volatile"
     Returns:
-            [0] 	:(float) Radius in Earth radii
-            [1] 	:(float) Error in radius, if mass error provided
+            [0] 	:(float) Radius if input mass, Mass if input radius.
+            [1] 	:(float) Error in mass or radius, if error provided
     """
-    # Requires: mass, error, mode
-    mass = kwargs['mass']
-    error = kwargs['otegi_error'] if 'error' in kwargs.keys() else 0.0
-    mode = kwargs['otegi_mode'] if 'mode' in kwargs.keys() else 'rocky'
+    has_mass = 'mass' in kwargs.keys()
+    has_radius = 'radius' in kwargs.keys()
+    if (has_mass and has_radius) or (not has_mass and not has_radius):
+        print(f" Error: specify either mass or radius")
+        return None
+    if has_mass: return otegi2020_radius(mass=kwargs['mass'])
+    return otegi2020_mass(radius=kwargs['radius'])
+
+def otegi2020_mass(radius, error=0.0, mode='rocky'):
     otegi_models = [
         dict(mode='rocky', const=1.03, c_err=0.02, pow=0.29, p_err=0.01),
         dict(mode='volatile', const=0.7, c_err=0.11, pow=0.63, p_err=0.04)
     ]
+    if(mode not in ['rocky','volatile']):
+        print(f"Error: unknown mode '{mode}'. Setting to rocky.")
+        mode = 'rocky'
+    model = otegi_models[0] if mode=='rocky' else otegi_models[1]
+    mass = (radius/model['const'])**(1/model['pow'])
+    return mass
 
-    if(mode not in ['rocky','volatile']): print(f"Error: unknown mode '{mode}'")
+def otegi2020_radius(mass, error=0.0, mode='rocky'):
+    otegi_models = [
+        dict(mode='rocky', const=1.03, c_err=0.02, pow=0.29, p_err=0.01),
+        dict(mode='volatile', const=0.7, c_err=0.11, pow=0.63, p_err=0.04)
+    ]
+    if(mode not in ['rocky','volatile']):
+        print(f"Error: unknown mode '{mode}'. Setting to rocky.")
+        mode = 'rocky'
     model = otegi_models[0] if mode=='rocky' else otegi_models[1]
     radius = model['const'] * mass ** model['pow']
+    if error == 0.0: return radius
     # Errors
     const_term = model['c_err'] * mass ** model['pow']
     mass_term =  model['const'] * model['pow'] * error * mass ** (model['pow']-1)
     pow_term =   model['const'] * mass ** model['pow'] * np.log(mass) * model['p_err']
     radius_err = np.sqrt( (const_term)**2 + (mass_term)**2 + (pow_term)**2 )
-    
-    if error == 0.0: return radius
     return radius, radius_err
+
 
 
 def evolve_forward(planet, mloss, struct, star, time_step=1.0, age_end=1e4, **kwargs):
@@ -200,7 +230,7 @@ def _update_params(params, planet, star):
     params['mstar'] = star.Mstar
     return params
 
-
+# LEGACY
 class Evolve:
     def forward(planet, mloss, struct, star, time_step=1.0, age_end=1e4, **kwargs):
         """
@@ -313,20 +343,27 @@ class Planet:
             raise ValueError("age or orbital distance undefined")
 
         if self.mr is None or not callable(self.mr):
-            self.mr = OwenMassRadiusRelation
+            self.mr = OtegiMassRadiusRelation
 
         if type(self.comp) != dict or \
            (type(self.comp) == dict and tuple(self.comp.keys()) != ['Xiron','Xice']) or \
            sum( list(self.comp.values()) ) > 1.0:
                 self.comp = {'Xiron':1/3, 'Xice':0.0}
+        
+        if self.mcore is None and self.rcore is None:
+            raise ValueError("core mass or radius undefined")
+        elif self.mcore is None: self.mcore = self.mr(radius=self.rcore, **self.comp)
+        elif self.rcore is None: self.rcore = self.mr(mass=self.mcore, **self.comp)
 
-        if self.mcore is None:
-            raise ValueError("core mass undefined")
         if self.rcore is None:
             print(f" Warning: core radius undefined.", end='')
             print(f" Will be estimated from a mass-radius relation ", end='')
-            self.rcore = self.mr(mass=self.mcore, Xiron=self.comp['Xiron'], Xice=self.comp['Xice'])
             print(f" -> {self.rcore:.3f} Earth radii")
+
+        elif self.mcore is None:
+            print(f" Warning: core mass undefined.", end='')
+            print(f" Will be estimated from a mass-radius relation ", end='')
+            print(f" -> {self.mcore:.3f} Earth masses")
 
         # Temporal solution until solving for fenv is implemented
         if self.fenv is None:
