@@ -117,6 +117,7 @@ def Kubyshkina18(**kwargs):
         mass: planet M_earth
         radius: planet R_earth
         Lxuv: XUV luminosity of the star in erg/s
+        Lbol: bolometric luminosity in erg/s
         dist: planet-star separation in AU
 
     Optional keywords:
@@ -134,7 +135,7 @@ def Kubyshkina18(**kwargs):
             "radius": [1.0,  39.0],
             "mass":   [1.0,  10.0],
             "Lxuv":   [1e26, 5e30],
-            "Lbol":   [1.0,  1e50],
+            "Lbol":   [1.0,  1e40],
             "dist":   [0.02, 1.3]
     }
     if 'safe' in kwargs and kwargs['safe'] is True: _bound_check(bounds, kwargs)

@@ -7,6 +7,7 @@
 from copy import deepcopy
 import numpy as np
 import astropy.constants as Const
+import matplotlib.pyplot as plt
 import Mors as mors
 
 from .EvapMass.planet_structure import mass_to_radius_solid as owen_radius
@@ -83,7 +84,27 @@ def otegi2020_radius(mass, error=0.0, mode='rocky'):
     radius_err = np.sqrt( (const_term)**2 + (mass_term)**2 + (pow_term)**2 )
     return radius, radius_err
 
+def indexable(obj):
+    try:
+        obj[:]
+    except TypeError:
+        return False
+    return True
 
+"""
+def get_time_track(time_step, age_end):
+    if indexable(time_step):
+        return time_step
+    time_track = np.
+
+
+def get_star_track(star, steps):
+    try:
+        import Mors as mors
+        star
+    except ImportError:
+        # check if is dict
+"""
 
 def evolve_forward(planet, mloss, struct, star, time_step=1.0, age_end=1e4, **kwargs):
     """
@@ -116,7 +137,7 @@ def evolve_forward(planet, mloss, struct, star, time_step=1.0, age_end=1e4, **kw
     params = kwargs
 
     # Initial definition of Renv and Rp
-    params = Evolve.update_params(params, pl, star)
+    params = _update_params(params, pl, star)
     pl.renv = struct(**params)
     pl.rp = pl.rcore + pl.renv
     # Update input planet unknowns
@@ -125,7 +146,7 @@ def evolve_forward(planet, mloss, struct, star, time_step=1.0, age_end=1e4, **kw
 
     while(pl.age < age_end):
         # Parameters
-        params = Evolve.update_params(params, pl, star)
+        params = _update_params(params, pl, star)
         # Evolution
         # - mass loss
         if mloss is not None and pl.fenv > 1e-4:
@@ -174,7 +195,7 @@ def evolve_back(planet, mloss, struct, star, time_step=1.0, age_end=1.0, **kwarg
     params = kwargs
 
     # Initial definition of Renv and Rp
-    params = Evolve.update_params(params, pl, star)
+    params = _update_params(params, pl, star)
     pl.renv = struct(**params)
     pl.rp = pl.rcore + pl.renv
     # Update input planet unknowns
@@ -184,7 +205,7 @@ def evolve_back(planet, mloss, struct, star, time_step=1.0, age_end=1.0, **kwarg
 
     while(pl.age > age_end):
         # Parameters
-        params = Evolve.update_params(params, pl, star)
+        params = _update_params(params, pl, star)
         # Evolution
         # - mass loss
         if mloss is not None and pl.fenv > 1e-4:
@@ -202,17 +223,48 @@ def evolve_back(planet, mloss, struct, star, time_step=1.0, age_end=1.0, **kwarg
     tracks = _reverse_tracks(tracks)
     return tracks
 
+def plot_tracks(*tracks):
+    if len(tracks) == 0: return
+    fields = tracks[0].keys()
+    colors = "rgbcmyk"
+    lines = ('-', '--', '-.', ':')
+    fmts = [c+l for l in lines for c in colors]
+    fmts *= int(1+len(tracks)/len(fields))
+    for i,f in enumerate(fields):
+        if f == 'Age': continue
+        plt.xlabel('Age [Myr]')
+        plt.ylabel(f)
+        plt.xscale('log')
+        for j in range(len(tracks)):
+            if len(tracks[j][f]) != len(tracks[j]['Age']): continue
+            plt.plot(tracks[j]['Age'], tracks[j][f], fmts[j])
+        plt.show()
+        
 
 def _init_tracks():
-    fields = ('Age', 'Lbol', 'Lx', 'Rp', 'Mp', 'Menv', 'Renv', 'Fenv', 'Mloss', 'Dens')
-    tracks = dict( Age=[], Lbol=[], Rp=[], Mp=[] )
+    fields = ('Age', 'Lbol', 'Lxuv', 'Rp', 'Mp', 'Menv', 'Renv', 'Fenv', 'Dens')
+    #tracks = dict( Age=[], Lbol=[], Rp=[], Mp=[] )
+    tracks = {f:[] for f in fields}
     return tracks
+
+def _planet_density(mp, rp):
+    """
+    mp: mass in Earth masses
+    rp: radius in Earth radii
+    Returns: density in g/cm^3
+    """
+    return Const.M_earth.value * mp / (4*np.pi/3 * (Const.R_earth.value * rp)**3)
 
 def _update_tracks(tracks, planet, star):
     tracks['Age'].append(planet.age)
     tracks['Lbol'].append(star.Lbol(planet.age))
+    tracks['Lxuv'].append(star.Lx(planet.age)+star.Leuv(planet.age))
     tracks['Rp'].append(planet.rp)
     tracks['Mp'].append(planet.mp)
+    tracks['Menv'].append(planet.menv)
+    tracks['Renv'].append(planet.renv)
+    tracks['Fenv'].append(planet.fenv)
+    tracks['Dens'].append( _planet_density(mp=planet.mp, rp=planet.rp) )
     return tracks
 
 def _reverse_tracks(tracks):
@@ -227,28 +279,15 @@ def _update_params(params, planet, star):
     params['mass'] = planet.mp
     params['radius'] = planet.rp
     params['Lxuv'] = star.Lx(planet.age) + star.Leuv(planet.age)
+    params['Lbol'] = star.Lbol(planet.age)
     params['mstar'] = star.Mstar
     return params
 
+
 # LEGACY
+"""
 class Evolve:
     def forward(planet, mloss, struct, star, time_step=1.0, age_end=1e4, **kwargs):
-        """
-        Evolves a planet forward and backwards.
-        Parameters:
-            planet:     (object) photoevolve.core.Planet object previously initialised
-            mloss:      (class) Mass loss formulation from photoevolve.massloss
-            struct:     (class) Function that relates the envelope radius to the envelope mass fraction
-            star:       (object OR dict) Description of X-ray evolution of the host star. Three options:
-                            > Mors.Star object
-                            > Dict of two arrays: 'Lxuv' and 'Lbol' luminosity tracks of length (age_end - planet.age + 1)/time_step
-            time_step:  (float) Time step of the simulation in Myr
-            age_end:    (float) Oldest age to which to run simulation
-            **kwargs:   Specific parameters to tailor your simulation:
-                            'eff': mass loss efficiency if using the EnergyLimited formulation.
-                            'beta': Rxuv / Rp
-                            'mstar': Mass of the host star in M_sun.
-        """
         pl = deepcopy(planet)
         print(type(pl))
         if type(pl) != Planet:
@@ -306,7 +345,7 @@ class Evolve:
         params['Lxuv'] = star.Lx(planet.age) + star.Leuv(planet.age)
         params['mstar'] = star.Mstar
         return params
-
+"""
 
 class Planet:
     def __init__(self, mp=None, rp=None, mcore=None, rcore=None, menv=None, renv=None, fenv=None, dist=None, age=None, comp=None, mr=None):
