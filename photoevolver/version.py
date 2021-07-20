@@ -1,4 +1,4 @@
-__version__ = "1.3"
+__version__ = "1.4"
 __author__ = "Jorge Fernandez"
 
 """
@@ -13,10 +13,15 @@ __author__ = "Jorge Fernandez"
 - Function to evolve BOTH forward and back
 - Alternate star formulation: dict with Lbol and Lxuv, same length as ages
 - Alternate time_step formulation: array of ages or time steps.
-- Return more tracks, e.g. mass loss
-- Make tracks into a class to retrieve values at any age.
+- Return more tracks, e.g. mass loss, eff, beta, etc
 
 --- Changelog ---
+
+Version 1.4
+    - The envelope mass fraction can now be calculated by solving the structure equations. As a result, planets no longer require an input envelope mass fraction (fenv), but can accept the envelope radius 'renv' instead. Alternatively, one can also define the planet's total radius (rp), from which renv is calculated. 
+    - Evolve functions now return a Tracks class. Works like a dictionary: you can do tracks['key'] and tracks.keys(). Furthermore, one can obtain the value of any parameter at any age by calling relevant methods: tracks.radius(55), tracks.fenv(100), and so on with all keys except 'Age'.
+    - Added planet return method for Tracks class. Given an age (and a Planet class on which the tracks are based on), it returns a new instance of Planet with its parameters at the given age. E.g. planet2 = tracks.planet(100, planet1)
+    - Added appending/adding tracks whose starting and ending ages don't overlap. Use append method or simply + operator.
 
 Version 1.3
     - Added Otegi (2020) and Owen (EvapMass) relations to calculate core mass from radius.

@@ -10,8 +10,10 @@ import astropy.constants as Const
 import matplotlib.pyplot as plt
 import Mors as mors
 
+from .structure import fenv_solve
 from .EvapMass.planet_structure import mass_to_radius_solid as owen_radius
 from .EvapMass.planet_structure import solid_radius_to_mass as owen_mass
+
 
 # Wrapper for EvapMass M-R relation
 def OwenMassRadiusRelation(**kwargs):
@@ -106,6 +108,72 @@ def get_star_track(star, steps):
         # check if is dict
 """
 
+"""
+
+GetItem
+Tracks['Age'], Tracks['Radius']
+
+SetItem
+Tracks['Fenv'][0] = 0.05
+
+Interpolation
+Tracks.Fenv(100) # fenv @ 100 Myr
+
+"""
+
+class Tracks:
+    def __init__(self, data : dict):
+        self.tracks = data
+        self.interp()
+    
+    def keys(self):
+        return self.tracks.keys()
+    
+    def __getitem__(self, field):
+        return self.tracks[field]
+
+    def __len__(self):
+        return len(self.tracks)
+
+    def __str__(self):
+        return "photoevolver.core.Tracks instance"
+
+    def __repr__(self):
+        return __str__()
+
+    def __add__(self, t2):
+        if type(t2) != Tracks: raise TypeError(f" Tracks can only concatenate with another Tracks instance, not '{type(t2)}'")
+        elif max(self['Age']) < min(t2['Age']):
+            # Track 2 is to the right (older ages)
+            new = Tracks(self.tracks)
+            for f in new.tracks.keys():
+                new.tracks[f] += t2.tracks[f]
+            new.interp()
+            return new
+        elif min(self['Age']) > max(t2['Age']):
+            # Track 2 is to the left (younger ages)
+            new = Tracks(t2.tracks)
+            for f in new.tracks.keys():
+                new.tracks[f] += self.tracks[f]
+            new.interp()
+            return new
+        else:
+            raise ValueError(f"the ages of Tracks to concatenate must not overlap: ({min(self['Age'])},{max(self['Age'])}) + ({min(t2['Age'])},{max(t2['Age'])}) Myr")
+
+    def append(self, t2):
+        return self + t2
+
+    def interp(self):
+        from scipy.interpolate import interp1d
+        for key in self.keys():
+            if key == 'Age': continue
+            func = interp1d(x=self.tracks['Age'], y=self.tracks[key])
+            setattr(self, key, func)
+    
+    def planet(self, age, p):
+        return Planet(mp=self.Mp(age), rp=self.Rp(age), mcore=p.mcore, rcore=p.rcore, menv=self.Menv(age), renv=self.Renv(age), fenv=self.Fenv(age), dist=p.dist, age=age)
+
+
 def evolve_forward(planet, mloss, struct, star, time_step=1.0, age_end=1e4, **kwargs):
     """
     Evolves a planet forward in time.
@@ -136,13 +204,17 @@ def evolve_forward(planet, mloss, struct, star, time_step=1.0, age_end=1e4, **kw
     tracks = _init_tracks()
     params = kwargs
 
-    # Initial definition of Renv and Rp
+    # Update planet parameters with structure equation
     params = _update_params(params, pl, star)
-    pl.renv = struct(**params)
-    pl.rp = pl.rcore + pl.renv
-    # Update input planet unknowns
-    planet.renv = pl.renv
-    planet.rp = pl.rp
+    # - radii
+    pl.renv = struct(**params) if pl.renv is None else pl.renv
+    pl.rp = pl.rcore + pl.renv if pl.rp is None else pl.rp
+    # - masses
+    pl.fenv = fenv_solve(fstruct=struct, **params) if pl.fenv is None else pl.fenv
+    pl.mp = pl.mcore / (1 - pl.fenv) if pl.mp is None else pl.mp
+    pl.menv = pl.mp * pl.fenv if pl.menv is None else pl.menv
+    # Update with newly calculated values
+    params = _update_params(params, pl, star)
 
     while(pl.age < age_end):
         # Parameters
@@ -161,7 +233,7 @@ def evolve_forward(planet, mloss, struct, star, time_step=1.0, age_end=1e4, **kw
         tracks = _update_tracks(tracks, pl, star)
         # Jump
         pl.age += time_step
-    return tracks
+    return Tracks(tracks)
 
 
 def evolve_back(planet, mloss, struct, star, time_step=1.0, age_end=1.0, **kwargs):
@@ -194,14 +266,18 @@ def evolve_back(planet, mloss, struct, star, time_step=1.0, age_end=1.0, **kwarg
     tracks = _init_tracks()
     params = kwargs
 
-    # Initial definition of Renv and Rp
+    # Update planet parameters with structure equation
     params = _update_params(params, pl, star)
-    pl.renv = struct(**params)
-    pl.rp = pl.rcore + pl.renv
-    # Update input planet unknowns
-    planet.renv = pl.renv
-    planet.rp = pl.rp
+    # - radii
+    pl.renv = struct(**params) if pl.renv is None else pl.renv
+    pl.rp = pl.rcore + pl.renv if pl.rp is None else pl.rp
+    # - masses
+    pl.fenv = fenv_solve(fstruct=struct, **params) if pl.fenv is None else pl.fenv
     if pl.fenv < 1e-4: pl.fenv = 1e-4
+    pl.mp = pl.mcore / (1 - pl.fenv) if pl.mp is None else pl.mp
+    pl.menv = pl.mp * pl.fenv if pl.menv is None else pl.menv
+    # Update with newly calculated values
+    params = _update_params(params, pl, star)
 
     while(pl.age > age_end):
         # Parameters
@@ -221,9 +297,12 @@ def evolve_back(planet, mloss, struct, star, time_step=1.0, age_end=1.0, **kwarg
         # Jump
         pl.age -= time_step
     tracks = _reverse_tracks(tracks)
-    return tracks
+    return Tracks(tracks)
+
+
 
 def plot_tracks(*tracks):
+    # Parameters: tracks, labels, colors, linestyles
     if len(tracks) == 0: return
     fields = tracks[0].keys()
     colors = "rgbcmyk"
@@ -253,7 +332,7 @@ def _planet_density(mp, rp):
     rp: radius in Earth radii
     Returns: density in g/cm^3
     """
-    return Const.M_earth.value * mp / (4*np.pi/3 * (Const.R_earth.value * rp)**3)
+    return Const.M_earth.to('g').value * mp / (4*np.pi/3 * (Const.R_earth.to('cm').value * rp)**3)
 
 def _update_tracks(tracks, planet, star):
     tracks['Age'].append(planet.age)
@@ -283,69 +362,6 @@ def _update_params(params, planet, star):
     params['mstar'] = star.Mstar
     return params
 
-
-# LEGACY
-"""
-class Evolve:
-    def forward(planet, mloss, struct, star, time_step=1.0, age_end=1e4, **kwargs):
-        pl = deepcopy(planet)
-        print(type(pl))
-        if type(pl) != Planet:
-            raise ValueError("the planet must be an instance of the photoevolve.core.Planet class")
-        if not callable(struct):
-            raise ValueError("struct must be a function")
-        if age_end <= pl.age:
-            raise ValueError("The miminum and maximum ages must be lower/greater than the defined pl age")
-        if type(star) != mors.Star:
-            raise NotImplementedError("The star must be a Mors.Star instance")
-
-        tracks = dict( Age=[], Lbol=[], Rp=[], Mp=[] )
-        params = kwargs
-
-        # Initial definition of Renv and Rp
-        params = Evolve.update_params(params, pl, star)
-        pl.renv = struct(**params)
-        pl.rp = pl.rcore + pl.renv
-        # Update input planet unknowns
-        planet.renv = pl.renv
-        planet.rp = pl.rp
-
-        while(pl.age < age_end):
-            # Parameters
-            params = Evolve.update_params(params, pl, star)
-            # Evolution
-            # - mass loss
-            if mloss is not None and pl.fenv > 1e-4:
-                pl.menv -= mloss(**params)
-                pl.mp = pl.mcore + pl.menv 
-                pl.fenv = pl.menv / pl.mp
-                params = Evolve.update_params(params, pl, star)
-            # - envelope radius
-            pl.renv = struct(**params)
-            pl.rp = pl.rcore + pl.renv
-            # Update Tracks
-            tracks = Evolve.update_tracks(tracks, pl, star)
-            # Jump
-            pl.age += time_step
-        return tracks
-
-    def update_tracks(tracks, planet, star):
-        tracks['Age'].append(planet.age)
-        tracks['Lbol'].append(star.Lbol(planet.age))
-        tracks['Rp'].append(planet.rp)
-        tracks['Mp'].append(planet.mp)
-        return tracks
-
-    def update_params(params, planet, star):
-        fbol = star.Lbol(planet.age) / (planet.dist*Const.au.to('cm').value)**2 / (4*np.pi)
-        params.update(planet.__dict__)
-        params['fbol'] = fbol
-        params['mass'] = planet.mp
-        params['radius'] = planet.rp
-        params['Lxuv'] = star.Lx(planet.age) + star.Leuv(planet.age)
-        params['mstar'] = star.Mstar
-        return params
-"""
 
 class Planet:
     def __init__(self, mp=None, rp=None, mcore=None, rcore=None, menv=None, renv=None, fenv=None, dist=None, age=None, comp=None, mr=None):
@@ -404,10 +420,6 @@ class Planet:
             print(f" Will be estimated from a mass-radius relation ", end='')
             print(f" -> {self.mcore:.3f} Earth masses")
 
-        # Temporal solution until solving for fenv is implemented
-        if self.fenv is None:
-            raise NotImplementedError("fenv must be defined to calculate envelope radius")
-
         # Radii known (unknown menv, mp, fenv)
         if self.rp is not None:
             self.renv = self.rp - self.rcore if self.renv is None else self.renv
@@ -420,9 +432,13 @@ class Planet:
             self.fenv = self.menv / self.mp
         elif self.fenv is not None:
             self.menv = self.fenv * self.mcore / (1 - self.fenv) if self.menv is None else self.menv
-            self.mp   = self.menv + self.mcore       if self.mp   is None else self.mp    
+            self.mp   = self.menv + self.mcore       if self.mp   is None else self.mp
 
-        else: raise ValueError("not enough planet parameters defined") 
+        elif self.fenv is None and self.renv is None:
+            raise ValueError(" Error: either envelope radius (renv) or mass fraction (fenv) must be defined")
+        else: raise ValueError("not enough planet parameters defined")
+
+
         
     def __repr__(self): 
         mcore_str = f"{self.mcore:.2f}"      if self.mcore is not None else "TBD"

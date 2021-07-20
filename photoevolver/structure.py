@@ -177,4 +177,29 @@ def OwenWu17(**kwargs):
 
 
 
+def fenv_solve(fstruct, renv, mass, fbol, age, **kwargs):
+    """
+    Given a planet structure function (which calculates the envelope radius from the mass fraction), and a envelope radius, it solves the structure equation and returns the planet's envelope mass fraction.
+    Parameters:
+        fstruct:    (callable) Structure function
+        renv:       (float) Envelope radius (Earth radii)
+        mass:       (float) Planet mass (Earth masses)
+        fbol:       (float) Stellar bolometric flux at the planet (erg/s/cm^2)
+        age:        (float) Age of the planet in Myr.
+        kwargs:     Keyword arguments to pass to structure function
+    """
+    fenv_guess = 0.01
+    def wrapper(fenv, kwargs):
+        kwargs['fenv'] = fenv
+        kwargs['mass'] = kwargs['mcore'] / (1 - kwargs['fenv']) if kwargs['mass'] is None else kwargs['mass']
+        return fstruct(**kwargs) - kwargs['renv']
+    from scipy.optimize import fsolve
+    kwargs['renv'] = renv
+    kwargs['mass'] = mass
+    kwargs['fbol'] = fbol
+    kwargs['age'] = age
+    solution = fsolve(func=wrapper, x0=fenv_guess, args=(kwargs) )
+    return float(solution[0])
+
+
 
