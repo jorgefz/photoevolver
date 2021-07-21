@@ -1,4 +1,4 @@
-__version__ = "1.4"
+__version__ = "1.4.1"
 __author__ = "Jorge Fernandez"
 
 """
@@ -14,8 +14,13 @@ __author__ = "Jorge Fernandez"
 - Alternate star formulation: dict with Lbol and Lxuv, same length as ages
 - Alternate time_step formulation: array of ages or time steps.
 - Return more tracks, e.g. mass loss, eff, beta, etc
+- Fix bug with Kubyshkina 2018
 
 --- Changelog ---
+
+Version 1.4.1
+    - Tracks __add__ now allows two tracks that overlap on one data point (the joint), such that two tracks, past and future, for the same planet can be sucessfully concatenated.
+    - Better treatment for planets with zero envelope: evolve_back sets minimum renv and fenv, evolve_forward skips mass loss and structure calculation if renv or fenv fall down to zero.
 
 Version 1.4
     - The envelope mass fraction can now be calculated by solving the structure equations. As a result, planets no longer require an input envelope mass fraction (fenv), but can accept the envelope radius 'renv' instead. Alternatively, one can also define the planet's total radius (rp), from which renv is calculated. 

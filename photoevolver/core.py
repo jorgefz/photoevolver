@@ -143,14 +143,14 @@ class Tracks:
 
     def __add__(self, t2):
         if type(t2) != Tracks: raise TypeError(f" Tracks can only concatenate with another Tracks instance, not '{type(t2)}'")
-        elif max(self['Age']) < min(t2['Age']):
+        elif max(self['Age']) <= min(t2['Age']):
             # Track 2 is to the right (older ages)
             new = Tracks(self.tracks)
             for f in new.tracks.keys():
                 new.tracks[f] += t2.tracks[f]
             new.interp()
             return new
-        elif min(self['Age']) > max(t2['Age']):
+        elif min(self['Age']) >= max(t2['Age']):
             # Track 2 is to the left (younger ages)
             new = Tracks(t2.tracks)
             for f in new.tracks.keys():
@@ -161,7 +161,8 @@ class Tracks:
             raise ValueError(f"the ages of Tracks to concatenate must not overlap: ({min(self['Age'])},{max(self['Age'])}) + ({min(t2['Age'])},{max(t2['Age'])}) Myr")
 
     def append(self, t2):
-        return self + t2
+        self = self + t2
+        return self
 
     def interp(self):
         from scipy.interpolate import interp1d
@@ -190,6 +191,8 @@ def evolve_forward(planet, mloss, struct, star, time_step=1.0, age_end=1e4, **kw
                         'eff': mass loss efficiency if using the EnergyLimited formulation.
                         'beta': Rxuv / Rp
                         'mstar': Mass of the host star in M_sun.
+                        'fenv_min':
+                        'renv_min': 
     """
     pl = deepcopy(planet)
     if type(pl) != Planet:
@@ -200,6 +203,8 @@ def evolve_forward(planet, mloss, struct, star, time_step=1.0, age_end=1e4, **kw
         raise ValueError("The maximum age must be greater than the planet's age")
     if type(star) != mors.Star:
         raise NotImplementedError("The star must be a Mors.Star instance")
+    if 'fenv_min' not in kwargs: kwargs['fenv_min'] = 1e-9
+    if 'renv_min' not in kwargs: kwargs['renv_min'] = 0.001
 
     tracks = _init_tracks()
     params = kwargs
@@ -207,13 +212,18 @@ def evolve_forward(planet, mloss, struct, star, time_step=1.0, age_end=1e4, **kw
     # Update planet parameters with structure equation
     params = _update_params(params, pl, star)
     # - radii
-    pl.renv = struct(**params) if pl.renv is None else pl.renv
-    pl.rp = pl.rcore + pl.renv if pl.rp is None else pl.rp
+    if pl.fenv is not None:
+        if pl.fenv > kwargs['fenv_min']:
+            pl.renv = struct(**params) if pl.renv is None else pl.renv
+        else: pl.renv = 0.0
+        pl.rp = pl.rcore + pl.renv if pl.rp is None else pl.rp
     # - masses
-    pl.fenv = fenv_solve(fstruct=struct, **params) if pl.fenv is None else pl.fenv
-    pl.mp = pl.mcore / (1 - pl.fenv) if pl.mp is None else pl.mp
-    pl.menv = pl.mp * pl.fenv if pl.menv is None else pl.menv
-    # Update with newly calculated values
+    elif pl.renv is not None:
+        if pl.renv > kwargs['renv_min']: 
+            pl.fenv = fenv_solve(fstruct=struct, **params) if pl.fenv is None else pl.fenv
+        else: pl.fenv = 0.0
+        pl.mp = pl.mcore / (1 - pl.fenv) if pl.mp is None else pl.mp
+        pl.menv = pl.mp * pl.fenv if pl.menv is None else pl.menv 
     params = _update_params(params, pl, star)
 
     while(pl.age < age_end):
@@ -221,14 +231,19 @@ def evolve_forward(planet, mloss, struct, star, time_step=1.0, age_end=1e4, **kw
         params = _update_params(params, pl, star)
         # Evolution
         # - mass loss
-        if mloss is not None and pl.fenv > 1e-4:
+        if mloss is not None and pl.fenv > kwargs['fenv_min']:
             pl.menv -= mloss(**params)
             pl.mp = pl.mcore + pl.menv 
             pl.fenv = pl.menv / pl.mp
             params = _update_params(params, pl, star)
+        elif pl.fenv < kwargs['fenv_min']:
+            pl.fenv = 0.0
+            pl.renv = 0.0
         # - envelope radius
-        pl.renv = struct(**params)
-        pl.rp = pl.rcore + pl.renv
+        if pl.renv > kwargs['renv_min']:
+            pl.renv = struct(**params)
+            if pl.renv <= kwargs['renv_min']: pl.renv = 0.0
+            pl.rp = pl.rcore + pl.renv
         # Update Tracks
         tracks = _update_tracks(tracks, pl, star)
         # Jump
@@ -262,18 +277,23 @@ def evolve_back(planet, mloss, struct, star, time_step=1.0, age_end=1.0, **kwarg
         raise ValueError("The miminum age must be lower than the planet's age")
     if type(star) != mors.Star:
         raise NotImplementedError("The star must be a Mors.Star instance")
-
+    if 'fenv_min' not in kwargs: kwargs['fenv_min'] = 1e-9
+    if 'renv_min' not in kwargs: kwargs['renv_min'] = 0.001
+ 
+    # Zero envelope fix
+    if pl.fenv is not None and pl.fenv < kwargs['fenv_min']: pl.fenv = kwargs['fenv_min']
+    if pl.renv is not None and pl.renv < kwargs['renv_min']: pl.renv = kwargs['renv_min']
+    
     tracks = _init_tracks()
     params = kwargs
 
     # Update planet parameters with structure equation
     params = _update_params(params, pl, star)
-    # - radii
+    # - radii 
     pl.renv = struct(**params) if pl.renv is None else pl.renv
     pl.rp = pl.rcore + pl.renv if pl.rp is None else pl.rp
     # - masses
     pl.fenv = fenv_solve(fstruct=struct, **params) if pl.fenv is None else pl.fenv
-    if pl.fenv < 1e-4: pl.fenv = 1e-4
     pl.mp = pl.mcore / (1 - pl.fenv) if pl.mp is None else pl.mp
     pl.menv = pl.mp * pl.fenv if pl.menv is None else pl.menv
     # Update with newly calculated values
@@ -284,7 +304,8 @@ def evolve_back(planet, mloss, struct, star, time_step=1.0, age_end=1.0, **kwarg
         params = _update_params(params, pl, star)
         # Evolution
         # - mass loss
-        if mloss is not None and pl.fenv > 1e-4:
+        #if mloss is not None and pl.fenv > kwargs['fenv_min']:
+        if mloss is not None:
             pl.menv += mloss(**params)
             pl.mp = pl.mcore + pl.menv 
             pl.fenv = pl.menv / pl.mp
@@ -447,7 +468,7 @@ class Planet:
         renv_str = f"{self.renv:.2f}"        if self.renv is not None else "TBD"
         mp_str = f"{self.mp:.2f}"            if self.mp is not None else "TBD"
         rp_str = f"{self.rp:.2f}"            if self.rp is not None else "TBD"
-        fenv_str = f"[{self.fenv*100:.2f}%]" if self.fenv is not None else "TBD"
+        fenv_str = f"[{self.fenv*100:.5f}%]" if self.fenv is not None else "TBD"
         comp_str = f"[ice:{self.comp['Xice']*100:.0f}% iron:{self.comp['Xiron']*100:.0f}%]"
 
         msg =  f"<{self.__class__.__module__}.{self.__class__.__name__} object at {hex(id(self))}>\n\n" \
