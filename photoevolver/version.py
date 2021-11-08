@@ -1,4 +1,4 @@
-__version__ = "1.4.1"
+__version__ = "1.5"
 __author__ = "Jorge Fernandez"
 
 """
@@ -11,12 +11,21 @@ __author__ = "Jorge Fernandez"
 
 - Turn Planet input variables to **kwargs
 - Function to evolve BOTH forward and back
-- Alternate star formulation: dict with Lbol and Lxuv, same length as ages
-- Alternate time_step formulation: array of ages or time steps.
 - Return more tracks, e.g. mass loss, eff, beta, etc
 - Fix bug with Kubyshkina 2018
+- Is there a bug with valley plots?
 
 --- Changelog ---
+
+Version 1.5.1
+    - Solved bug with Lopez & Fortney 2014 formulation. Age term power changed from -0.18 (enhanced opacity) to -0.11 (solar metallicity).
+    - Confirmed correctness for Kubyshkina 2018 and Energy Limited mass loss formulations.
+    - Confirmed correctness for Lopez & Fortney 2014 structure formulation.
+
+Version 1.5
+    - Evolve functions now accept an array of ages at which the planet's parameters are updated. If used, it overrides the age_end and time_step parameters.
+    - Evolve functions now accept an alternative to a mors.Star object: a dictionary of two keys, 'Lxuv' and 'Lbol', each containing an array of the same length as 'ages' that tracks the XUV and bolometric fluxes of the star at each age.
+    - Removed dependency on Mors module
 
 Version 1.4.1
     - Tracks __add__ now allows two tracks that overlap on one data point (the joint), such that two tracks, past and future, for the same planet can be sucessfully concatenated.

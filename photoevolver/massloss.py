@@ -136,7 +136,7 @@ def Kubyshkina18(**kwargs):
             "mass":   [1.0,  10.0],
             "Lxuv":   [1e26, 5e30],
             "Lbol":   [1.0,  1e40],
-            "dist":   [0.02, 1.3]
+            "dist":   [0.002, 1.3]
     }
     if 'safe' in kwargs and kwargs['safe'] is True: _bound_check(bounds, kwargs)
     # --

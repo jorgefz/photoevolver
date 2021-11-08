@@ -65,7 +65,7 @@ def LopezFortney14(**kwargs):
     # --
     mass_term = 2.06 * ( kwargs['mass'] )**(-0.21)
     flux_term = ( kwargs['fbol'] * ergcm2s_to_Wm2 / Fbol_earth)**(0.044)
-    age_term  = ( kwargs['age'] /5000)**(-0.18)
+    age_term  = ( kwargs['age'] /5000)**(-0.11) # t ** (-0.18) for enhanced opacity
     fenv_term = ( kwargs['fenv'] /0.05)**(0.59)
     renv = mass_term * fenv_term * flux_term * age_term
     return renv
