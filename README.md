@@ -76,10 +76,10 @@ where `planet` is the input planet generated above, `star` basically defines the
 ### Star
 
 First we define the host star using the package Mors, by Colin P. Johnstone. 
-Here, we define a star with 0.7 solar masses and a rotation period of 13.6 days.
+Here, we define a star with 0.7 solar masses, and a rotation period of 15 days at an age of 700 Myr.
 ```python
 >>> import Mors as mors
->>> star = mors.Star(Mstar = 0.7, Prot = 13.6)
+>>> star = mors.Star(Mstar = 0.7, Prot = 15, Age = 700)
 ```
 
 Alternatively, one can also manually input the bolometric and XUV luminosity tracks as two arrays. These must be packaged in a python dictionary with keys `Lxuv` and `Lbol` and have a length equal to the number of steps in the simulation ( 1 + (age\_end - age\_start) / time\_step ).
@@ -124,6 +124,7 @@ Plot the parameters with age to see how they evolve:
 * [Owen & Wu (2017)](https://ui.adsabs.harvard.edu/abs/2017ApJ...847...29O/abstract)
 * [Lecavelier des Etangs (2007)](https://ui.adsabs.harvard.edu/abs/2007A&A...461.1185L)
 * [Erkaev et al. (2007)](https://ui.adsabs.harvard.edu/abs/2007A%26A...472..329E/abstract)
+* [Kubyshkina et al. (2018)](https://ui.adsabs.harvard.edu/abs/2018ApJ...866L..18K/abstract)
 * [Wright et al. (2011)](https://ui.adsabs.harvard.edu/abs/2011ApJ...743...48W/abstract)
 * [Fulton et al. (2017)](https://ui.adsabs.harvard.edu/abs/2017AJ....154..109F/abstract)
 * [Owen & Campos Estrada (2021)](https://ui.adsabs.harvard.edu/abs/2020MNRAS.491.5287O/abstract)
