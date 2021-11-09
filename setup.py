@@ -29,7 +29,7 @@ setuptools.setup(
        "astropy",
        "numpy",
        "scipy",
-       "matplotlib",
-       "Mors"
+       "matplotlib"
+#       "Mors"
    ],
 )
