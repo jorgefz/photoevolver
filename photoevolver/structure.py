@@ -189,17 +189,25 @@ def fenv_solve(fstruct, renv, mass, fbol, age, **kwargs):
         kwargs:     Keyword arguments to pass to structure function
     """
     fenv_guess = 0.01
-    def wrapper(fenv, kwargs):
-        kwargs['fenv'] = fenv
+    def wrapper(x, *args, **kwargs):
+        kwargs['fenv'] = x[0]
         kwargs['mass'] = kwargs['mcore'] / (1 - kwargs['fenv']) if kwargs['mass'] is None else kwargs['mass']
         return fstruct(**kwargs) - kwargs['renv']
+
     from scipy.optimize import fsolve
     kwargs['renv'] = renv
     kwargs['mass'] = mass
     kwargs['fbol'] = fbol
     kwargs['age'] = age
-    solution = fsolve(func=wrapper, x0=fenv_guess, args=(kwargs) )
-    return float(solution[0])
+    
+    # scipy fsolve
+    # Requires changing wrapper so it takes (x,kwargs) and x is scalar, not array
+    #solution = fsolve(func=wrapper, x0=fenv_guess, args=(kwargs) )
+    #return float(solution[0])
 
-
+    # scipy least_squares
+    from scipy.optimize import least_squares
+    solution = least_squares(wrapper, fenv_guess, kwargs=kwargs )
+    #print(solution)
+    return solution.x[0]
 

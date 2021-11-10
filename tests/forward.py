@@ -2,7 +2,8 @@ import matplotlib.pyplot as plt
 import photoevolver as ph
 import Mors as mors
 
-star = mors.Star(Mstar=0.66, Age=700, Prot=15)
+#star = mors.Star(Mstar=0.66, Age=700, Prot=15)
+star = mors.Load("star.pickle")
 p = ph.core.Planet(age=700, dist=0.15, rp=1.5, mcore=1.3)
 
 future = ph.core.evolve_forward(planet=p, star=star, mloss=ph.massloss.EnergyLimited, struct=ph.structure.ChenRogers16, age_end=5000)

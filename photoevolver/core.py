@@ -123,7 +123,7 @@ class Tracks:
         return "photoevolver.core.Tracks instance"
 
     def __repr__(self):
-        return __str__()
+        return self.__str__()
 
     def __add__(self, t2):
         if type(t2) != Tracks:
@@ -294,7 +294,7 @@ def evolve_forward(planet, mloss, struct, star, time_step=1.0, age_end=1e4,\
     if 'fenv_min' not in kwargs: kwargs['fenv_min'] = 1e-5
     if 'renv_min' not in kwargs: kwargs['renv_min'] = 0.05
     if 'mstar' not in kwargs and is_mors_star(star):
-        kwargs['mstar'] = star.Mstar # temporary fix, remove to assert independence from Mors module 
+        kwargs['mstar'] = star.Mstar  
     
     if ages is None:
         length = int(abs(pl.age - age_end)/time_step) + 1
@@ -320,6 +320,7 @@ def evolve_forward(planet, mloss, struct, star, time_step=1.0, age_end=1e4,\
         pl.mp = pl.mcore / (1 - pl.fenv)
         pl.menv = pl.mp * pl.fenv
     
+    # MAIN EVOLUTION LOOP
     for i,a in enumerate(ages):
         if (i >= len(ages)-1): break # skip last age
         pl.age = a

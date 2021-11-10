@@ -17,6 +17,9 @@ __author__ = "Jorge Fernandez"
 
 --- Changelog ---
 
+Version 1.5.2
+    - Changed structure formulation root-finding function from Scipy fsolve to Scipy least_squares. Now recalculating Renv with solved Fenv will not result in a wildly different Renv from the one originally input.
+
 Version 1.5.1
     - Solved bug with Lopez & Fortney 2014 formulation. Age term power changed from -0.18 (enhanced opacity) to -0.11 (solar metallicity).
     - Confirmed correctness for Kubyshkina 2018 and Energy Limited mass loss formulations.
