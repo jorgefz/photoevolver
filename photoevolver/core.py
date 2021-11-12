@@ -106,8 +106,12 @@ def otegi2020_radius(mass, error=0.0, mode='rocky'):
 
 
 class Tracks:
-    def __init__(self, data : dict):
+    def __init__(self, data : dict, base_pl):
+        for k in data.keys():
+            if not indexable(data[k]): continue
+            data[k] = np.array(data[k])
         self.tracks = data
+        self.pl = base_pl
         self.interp()
     
     def keys(self):
@@ -131,14 +135,15 @@ class Tracks:
                     with another Tracks instance, not '{type(t2)}'")
         elif max(self['Age']) <= min(t2['Age']):
             # Track 2 is to the right (older ages)
-            new = Tracks(self.tracks)
+            new = Tracks(self.tracks, t2.pl)
             for f in new.tracks.keys():
-                new.tracks[f] += t2.tracks[f]
+                # new.tracks[f] += t2.tracks[f]
+                new.tracks[f] = np.append( new.tracks[f], t2.tracks[f] )
             new.interp()
             return new
         elif min(self['Age']) >= max(t2['Age']):
             # Track 2 is to the left (younger ages)
-            new = Tracks(t2.tracks)
+            new = Tracks(t2.tracks, t2.pl)
             for f in new.tracks.keys():
                 new.tracks[f] += self.tracks[f]
             new.interp()
@@ -159,7 +164,8 @@ class Tracks:
             func = interp1d(x=self.tracks['Age'], y=self.tracks[key])
             setattr(self, key, func)
     
-    def planet(self, age, p):
+    def planet(self, age, *args):
+        p = self.pl
         q = Planet(mp=self.Mp(age), rp=self.Rp(age), mcore=p.mcore, \
                 rcore=p.rcore, menv=self.Menv(age), renv=self.Renv(age), \
                 fenv=self.Fenv(age), dist=p.dist, age=age)
@@ -340,7 +346,7 @@ def evolve_forward(planet, mloss, struct, star, time_step=1.0, age_end=1e4,\
             if pl.renv <= kwargs['renv_min']: pl.renv = 0.0
             pl.rp = pl.rcore + pl.renv
         tracks = _update_tracks(tracks, pl, star, i=i)
-    return Tracks(tracks)
+    return Tracks(tracks, pl)
 
 
 def evolve_back(planet, mloss, struct, star, time_step=1.0, age_end=1.0, ages = None, **kwargs):
@@ -473,7 +479,7 @@ def evolve_back(planet, mloss, struct, star, time_step=1.0, age_end=1.0, ages = 
         tracks = _update_tracks(tracks, pl, star, i)
     
     tracks = _reverse_tracks(tracks)
-    return Tracks(tracks)
+    return Tracks(tracks, pl)
 
 
 def plot_tracks(*tracks):

@@ -207,7 +207,7 @@ def fenv_solve(fstruct, renv, mass, fbol, age, **kwargs):
 
     # scipy least_squares
     from scipy.optimize import least_squares
-    solution = least_squares(wrapper, fenv_guess, kwargs=kwargs )
+    solution = least_squares(wrapper, fenv_guess, kwargs=kwargs, bounds=(kwargs['fenv_min'],100) )
     #print(solution)
     return solution.x[0]
 
