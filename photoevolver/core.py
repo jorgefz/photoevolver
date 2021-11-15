@@ -8,6 +8,7 @@ from copy import deepcopy
 import numpy as np
 import astropy.constants as Const
 import matplotlib.pyplot as plt
+import pickle
 
 from .structure import fenv_solve
 from .EvapMass.planet_structure import mass_to_radius_solid as owen_radius
@@ -105,6 +106,11 @@ def otegi2020_radius(mass, error=0.0, mode='rocky'):
     return radius, radius_err
 
 
+def load_tracks(filename): 
+    with open(filename, 'rb') as handle:
+        tracks = pickle.load(handle)
+    return tracks
+
 class Tracks:
     def __init__(self, data : dict, base_pl):
         for k in data.keys():
@@ -117,6 +123,10 @@ class Tracks:
     def keys(self):
         return self.tracks.keys()
     
+    def save(self, filename):
+        with open(filename, 'wb') as handle:
+            pickle.dump(self, handle, protocol=pickle.HIGHEST_PROTOCOL)
+
     def __getitem__(self, field):
         return self.tracks[field]
 
@@ -190,7 +200,7 @@ def is_mors_star(obj):
 
 def GenerateStarTrack(star, ages):
     if isinstance(star, dict):
-        if list(star.keys()) != ['Lxuv', 'Lbol']:
+        if star.keys() != dict(Lxuv=None,Lbol=None).keys():
             raise KeyError("Star dict must only have keys 'Lxuv' and 'Lbol'.")
         if not indexable(star['Lxuv']) and not indexable(star['Lbol']):
             raise ValueError("Star dict values must be array_like")
@@ -230,14 +240,14 @@ def evolve_forward(planet, mloss, struct, star, time_step=1.0, age_end=1e4,\
     star : Mors.Star object | dict | callable
             Description of X-ray evolution of the host star. Defines the
             XUV and bolometric luminosities of the star at any given age.
-            If Mors.Star instance, the luminosities will be drawn from
+             - Mors.Star instance: the luminosities will be drawn from
             the Lx, Leuv, and Lbol tracks.
-            If dict, must have keys 'Lxuv' and 'Lbol', each being an array
+             - dict: must have keys 'Lxuv' and 'Lbol', each being an array
             of appropriate length containing the luminosity at each age.
             Must be sorted from young to old.
-            If callable, must be a function that takes the age in Myr
-            as its singlw argument, and returns an array of two values,
-            Lxuv and Lbol, in erg/s. E.g. f(age) -> [Lxuv, Lbol]
+             - callable: NOT IMPLEMENTED. Must be a function that takes 
+            the age in Myr as its single argument, and returns an array of two 
+            values, Lxuv and Lbol, in erg/s. E.g. f(age) -> [Lxuv, Lbol]
     time_step : float, optional
             Time step of the simulation in Myr. Default is 1 Myr.
     age_end : float, optional
@@ -369,13 +379,14 @@ def evolve_back(planet, mloss, struct, star, time_step=1.0, age_end=1.0, ages = 
     star : Mors.Star object | dict | callable
             Description of X-ray evolution of the host star. Defines the
             XUV and bolometric luminosities of the star at any given age.
-            If Mors.Star instance, the luminosities will be drawn from
+             - Mors.Star instance: the luminosities will be drawn from
             the Lx, Leuv, and Lbol tracks.
-            If dict, must have keys 'Lxuv' and 'Lbol', each being an array
+             - dict: must have keys 'Lxuv' and 'Lbol', each being an array
             of appropriate length containing the luminosity at each age.
-            If callable, must be a function that takes the age in Myr
-            as its singlw argument, and returns an array of two values,
-            Lxuv and Lbol, in erg/s. E.g. f(age) -> [Lxuv, Lbol]
+            Must be sorted from young to old.
+             - callable: NOT IMPLEMENTED. Must be a function that takes 
+            the age in Myr as its single argument, and returns an array of two 
+            values, Lxuv and Lbol, in erg/s. E.g. f(age) -> [Lxuv, Lbol]
     time_step : float, optional
             Time step of the simulation in Myr. Default is 1 Myr.
     age_end : float, optional

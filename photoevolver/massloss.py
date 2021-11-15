@@ -32,6 +32,8 @@ def salz16_beta(Fxuv, mp, rp):
     potential = Const.G.to('erg*m/g^2').value * mp * Const.M_earth.to('g').value / (rp * Const.R_earth.to('m').value)
     log_beta = -0.185*np.log10(potential) + 0.021*np.log10(Fxuv) + 2.42
     if log_beta < 0.0: log_beta = 0.0
+    # upper limit to beta
+    if 10**log_beta > 1.05 and potential < 1e12: log_beta = np.log10(1.05)
     return 10**(log_beta)
 
 def salz16_eff(mp, rp):
@@ -176,7 +178,8 @@ def Kubyshkina18(**kwargs):
     xp = small_delta if Jeans_param < np.exp(eps) else large_delta
     Kappa = xp['zeta'] + xp['theta']*np.log(dist)
     mloss = np.exp(xp['beta']) * (Fxuv)**xp['alpha'][0] * (dist)**xp['alpha'][1] * (rp)**xp['alpha'][2] * (Jeans_param)**Kappa
-    return mloss * 5.28e-12 * 1e-3 # g/s to M_earth/Myr
+
+    return mloss * 5.28e-15 # g/s to M_earth/Myr
 
 
 
