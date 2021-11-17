@@ -62,10 +62,13 @@ def LopezFortney14(**kwargs):
             "age":  [100.0, 10000.0]
     }
     if 'safe' in kwargs and kwargs['safe'] is True: _bound_check(bounds, kwargs)
+    if 'LF14_enhanced_opacity' in kwargs and kwargs['LF14_enhanced_opacity'] is True:
+        age_power = -0.18 # enhanced opacity
+    else: age_power = -0.11 # solar metallicity
     # --
     mass_term = 2.06 * ( kwargs['mass'] )**(-0.21)
     flux_term = ( kwargs['fbol'] * ergcm2s_to_Wm2 / Fbol_earth)**(0.044)
-    age_term  = ( kwargs['age'] /5000)**(-0.11) # t ** (-0.18) for enhanced opacity
+    age_term  = ( kwargs['age'] /5000)**(age_power)
     fenv_term = ( kwargs['fenv'] /0.05)**(0.59)
     renv = mass_term * fenv_term * flux_term * age_term
     return renv
@@ -163,9 +166,14 @@ def OwenWu17(**kwargs):
             "age":  [100.0, 10000.0]
     }
     if 'safe' in kwargs and kwargs['safe'] is True: _bound_check(bounds, kwargs)
+    if kwargs['fenv'] > 0.90:
+        warnings.warn("Envelope mass fraction is over 90%!")
+        fenv = 0.9
+    else: fenv = kwargs['fenv']
+
     # --
-    Xenv = kwargs['fenv'] / (1 - kwargs['fenv'])
-    Mcore = kwargs['mass'] * kwargs['fenv'] / Xenv
+    Xenv = fenv / (1 - fenv)
+    Mcore = kwargs['mass'] * fenv / Xenv
     Teq = ( kwargs['fbol'] * ergcm2s_to_Wm2 / (4*Const.sigma_sb.value) ) ** (1/4)
     Tkh = kwargs['age'] if kwargs['age'] > 100.0 else 100.0
     Xiron = kwargs['Xiron'] if 'Xiron' in kwargs else 1/3
