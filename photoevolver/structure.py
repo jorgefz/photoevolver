@@ -14,6 +14,7 @@ Models:
 import numpy as np
 import astropy.constants as Const
 import astropy.units as U
+import warnings
 
 from .EvapMass.planet_structure import solve_structure
 
