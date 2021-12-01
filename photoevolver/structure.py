@@ -16,7 +16,9 @@ import astropy.constants as Const
 import astropy.units as U
 import warnings
 
-from .EvapMass.planet_structure import solve_structure
+#from .EvapMass.planet_structure import solve_structure
+
+from .owenwu17 import RadiusOwenWu17
 
 # Bolometric flux at Earth (W/m^2)
 Fbol_earth = Const.L_sun.value / (4 * np.pi * (Const.au.value)**2 )
@@ -180,9 +182,11 @@ def OwenWu17(**kwargs):
     Xiron = kwargs['Xiron'] if 'Xiron' in kwargs else 1/3
     Xice = kwargs['Xice'] if 'Xice' in kwargs else 0.0
     # --
-    ret = solve_structure(X = Xenv, Teq = Teq, Mcore = Mcore, Tkh_Myr = Tkh, Xiron = Xiron, Xice = Xice)
+    #ret = solve_structure(X = Xenv, Teq = Teq, Mcore = Mcore, Tkh_Myr = Tkh, Xiron = Xiron, Xice = Xice)
     #return Rrcb_sol, f, Rplanet, Rrcb_sol-Rcore
-    return float( ret[2] - ret[0] + ret[3] ) * 1.56786e-9 # cm to Earth radius
+    #return float( ret[2] - ret[0] + ret[3] ) * 1.56786e-9 # cm to Earth radius
+    
+    return RadiusOwenWu17(**kwargs)
 
 
 

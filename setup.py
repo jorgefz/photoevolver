@@ -13,7 +13,6 @@ setuptools.setup(
     package_dir={"": "."},
     packages=setuptools.find_packages(where="."),
 
-    #packages=['xraytools'],
     description="Planetary evolver written in Python",
     long_description=long_description,
     long_description_content_type="text/markdown",

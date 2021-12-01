@@ -11,8 +11,11 @@ import matplotlib.pyplot as plt
 import pickle
 
 from .structure import fenv_solve
-from .EvapMass.planet_structure import mass_to_radius_solid as owen_radius
-from .EvapMass.planet_structure import solid_radius_to_mass as owen_mass
+#from .EvapMass.planet_structure import mass_to_radius_solid as owen_radius
+#from .EvapMass.planet_structure import solid_radius_to_mass as owen_mass
+
+from .owenwu17 import mass_to_radius as owen_radius
+from .owenwu17 import radius_to_mass as owen_mass
 
 
 # Wrapper for EvapMass M-R relation
