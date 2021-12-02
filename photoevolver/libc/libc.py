@@ -3,11 +3,18 @@ import subprocess as sp
 import ctypes
 import os
 import sys
+import platform
 
 _lib = None
 
 def _compile():
     py_dir = os.path.dirname(os.path.realpath(__file__))
+    if not os.path.exists(py_dir+"/shared"): os.mkdir(py_dir+"/shared")
+    if platform.system() == "Windows":
+        print(" Windows is currently not suported for compiling the C library. \
+                You may manually compile the code at photoevolver/lib/src into a shared library, \
+                name it 'libc.so', and place it in the folder photoevolver/libc/shared")
+        return 0
     retcode = sp.run(["sh", py_dir+"/make.sh"]).returncode
     if retcode != 0: raise OSError(f" Failed to compile library {retcode}")
     return retcode
