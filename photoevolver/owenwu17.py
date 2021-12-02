@@ -69,7 +69,6 @@ def get_RhoRcb(log_D_Rrcb, xenv, mcore, rcore, Teq, Tkh, Xiron, Xice):
     numerator = 64 * np.pi * I2_I1 * sigma_sb * Teq**(3-alpha-beta) * Rrcb * TKh_sec
     denominator = 3 * kappa0 * mcore * Units.M_earth.to('g') * xenv
     RhoRcb = (mu / k_B) * (numerator / denominator) ** (1 / (1+alpha))
-
     return RhoRcb
 
 
@@ -112,6 +111,7 @@ def EquilibriumTemperature(fbol):
 def RadiusOwenWu17(fenv, mass, rcore, age, fbol, dist, Xiron=1/3, Xice=0.0, **kwargs):
 
     mcore = mass * ( 1 - fenv)
+    
     xenv = fenv / (1 - fenv)
     Teq = EquilibriumTemperature( fbol )
     Tkh = age if age > 100 else 100
@@ -128,6 +128,12 @@ def RadiusOwenWu17(fenv, mass, rcore, age, fbol, dist, Xiron=1/3, Xice=0.0, **kw
     log_D_Rrcb_sol = solution[0]
 
     Rrcb_sol = 10**log_D_Rrcb_sol + rcore
+    
+    # return (10**log_D_Rrcb_sol) / Units.R_earth.to('cm')
+    
+    """
+    DRAGONS BE BELOW
+    """
 
     # now find f-factor to compute planet radius
     rho_rcb = get_RhoRcb(log_D_Rrcb_sol, xenv, mcore, rcore, Teq, Tkh, Xiron, Xice)

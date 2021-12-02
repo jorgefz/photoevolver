@@ -22,26 +22,31 @@ def _bound_check(bounds, params):
             raise ValueError(f"model parameter '{f}' out of safe bounds ({bounds[f][0]},{bounds[f][1]})")
 
 
-def salz16_beta(Fxuv, mp, rp):
+def salz16_beta(**kwargs):
     """
     Parameters
-        Fxuv: erg/cm2/s
+        fxuv: erg/cm2/s
         mp: Earth masses
         rp: Earth radii
     """
+    mp = kwargs['mp']
+    rp = kwargs['rp']
+    fxuv = kwargs['fxuv'] if 'fxuv' in kwargs else kwargs['Lxuv'] / (4*np.pi*(kwargs['dist']*U.au.to('cm'))**2)
     potential = Const.G.to('erg*m/g^2').value * mp * Const.M_earth.to('g').value / (rp * Const.R_earth.to('m').value)
-    log_beta = -0.185*np.log10(potential) + 0.021*np.log10(Fxuv) + 2.42
+    log_beta = -0.185*np.log10(potential) + 0.021*np.log10(fxuv) + 2.42
     if log_beta < 0.0: log_beta = 0.0
     # upper limit to beta
     if 10**log_beta > 1.05 and potential < 1e12: log_beta = np.log10(1.05)
     return 10**(log_beta)
 
-def salz16_eff(mp, rp):
+def salz16_eff(**kwargs):
     """
     Parameters
         mp: Planet mass in Earth masses
         rp: Planet radius in Earth radii
     """
+    mp = kwargs['mp']
+    rp = kwargs['rp']
     potential = Const.G.to('erg*m/g^2').value * mp * Const.M_earth.to('g').value / (rp * Const.R_earth.to('m').value)
     v = np.log10(potential)
     if   ( v < 12.0):           log_eff = np.log10(0.23) # constant
@@ -100,7 +105,7 @@ def EnergyLimited(**kwargs):
 
     if 'beta' not in kwargs: kwargs['beta'] = 1.0
     elif kwargs['beta'] == 'salz16':
-        kwargs['beta'] = salz16_beta(Fxuv*1e3, kwargs['mass']/Const.M_earth.value, kwargs['radius']/Const.R_earth.value)
+        kwargs['beta'] = salz16_beta(fxuv=Fxuv*1e3, mp=kwargs['mass']/Const.M_earth.value, rp=kwargs['radius']/Const.R_earth.value)
     elif type(kwargs['beta']) is str: kwargs['beta'] = 1.0
     # Energy-limited equation
     xi =( kwargs['dist'] / kwargs['radius'] ) * ( kwargs['mass'] / kwargs['mstar'] / 3)**(1/3)
