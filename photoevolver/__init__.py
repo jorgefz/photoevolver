@@ -5,16 +5,27 @@ import photoevolver.structure
 import photoevolver.owenwu17
 import photoevolver.libc.libc as libc
 
+
 from .version import __version__,__author__
 import os
+import platform
 
 py_dir = os.path.dirname(os.path.realpath(__file__))
 
-try:
-    __lib = libc._load_lib(py_dir + "/libc/shared/libc.so")
-except:
-    libc._compile()
-    __lib = libc._load_lib(py_dir + "/libc/shared/libc.so")
+if platform.system() == "Windows":
+    try:
+        __lib = libc._load_lib(pydir + "libc/shared/libc.dll")
+    except:
+        OSError(" compilation on Windows is not yet supported. \
+                You can manually compile the code at photoevolver/libc/src \
+                as a shared library into photoevolver/libc/shared/libc.dll, \
+                and run the package setup again.")
+else:
+    try:
+        __lib = libc._load_lib(py_dir + "/libc/shared/libc.so")
+    except:
+        libc._compile()
+        __lib = libc._load_lib(py_dir + "/libc/shared/libc.so")
 
 libc._setup_lib(__lib)
 libc._lib = __lib

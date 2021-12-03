@@ -13,11 +13,12 @@ def _compile():
     if platform.system() == "Windows":
         print(" Windows is currently not suported for compiling the C library. \
                 You may manually compile the code at photoevolver/lib/src into a shared library, \
-                name it 'libc.so', and place it in the folder photoevolver/libc/shared")
+                name it 'libc.dll', and place it in the folder photoevolver/libc/shared")
         return 0
-    retcode = sp.run(["sh", py_dir+"/make.sh"]).returncode
-    if retcode != 0: raise OSError(f" Failed to compile library {retcode}")
-    return retcode
+    else:
+        retcode = sp.run(["sh", py_dir+"/make.sh"]).returncode
+        if retcode != 0: raise OSError(f" Failed to compile library {retcode}")
+        return retcode
 
 def _load_lib(path):
     return ctypes.CDLL(os.path.abspath(path))
