@@ -12,14 +12,17 @@ import platform
 
 py_dir = os.path.dirname(os.path.realpath(__file__))
 
+
 if platform.system() == "Windows":
     try:
-        __lib = libc._load_lib(pydir + "libc/shared/libc.dll")
+        __lib = libc._load_lib(py_dir + "libc/shared/libc.dll")
+        print(__lib)
     except:
-        OSError(" compilation on Windows is not yet supported. \
-                You can manually compile the code at photoevolver/libc/src \
-                as a shared library into photoevolver/libc/shared/libc.dll, \
-                and run the package setup again.")
+        raise OSError(" compilation on Windows is not yet supported. \
+You can manually compile the code at photoevolver/libc/src \
+as a shared library into photoevolver/libc/shared/libc.dll, \
+and run the package setup again.")
+
 else:
     try:
         __lib = libc._load_lib(py_dir + "/libc/shared/libc.so")
