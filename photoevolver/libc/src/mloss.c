@@ -24,7 +24,8 @@ double BetaSalz16(double fxuv, double mass, double radius){
     potential = G_CGS_ERG * mass * MEARTH * 1000.0 /* to grams */ / (radius * REARTH);
     lg_beta = -0.185 * log10(potential) + 0.021 * log10(fxuv) + 2.42;
     if (lg_beta < 0.0) lg_beta = 0.0;
-    else if (lg_beta > log10(1.05) && potential < 1e12) lg_beta = log10(1.05);
+    //else if (lg_beta > log10(2.0)) lg_beta = log10(2.0);
+    else if (lg_beta > log10(1.05) && potential < 1e11) lg_beta = log10(1.05);
     return pow10(lg_beta);
 }
 

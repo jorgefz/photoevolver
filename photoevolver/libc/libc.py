@@ -79,7 +79,8 @@ def BetaSalz16(**kwargs):
     fxuv = kwargs['fxuv'] if 'fxuv' in kwargs.keys() else kwargs['Lxuv']/(4*np.pi*(kwargs['dist']*U.au.to('cm'))**2)
     mp = kwargs['mp']
     rp = kwargs['rp']
-    return _lib.BetaSalz16(fxuv, mp, rp)
+    beta = _lib.BetaSalz16(fxuv, mp, rp)
+    return beta
 
 def EffSalz16(**kwargs):
     mp = kwargs['mp']

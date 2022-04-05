@@ -7,10 +7,10 @@ import Mors as mors
 
 star = mors.Load("star.pickle")
 
-p = ph.core.Planet(age=700, dist=0.15, mcore=1.3, rp=1.48)
+p = ph.Planet(age=700, dist=0.15, mcore=1.3, rp=1.48)
 
-future = ph.core.evolve_forward(planet=p, star=star, mloss=ph.massloss.EnergyLimited, struct=ph.structure.ChenRogers16, age_end=5000)
-past = ph.core.evolve_back(planet=p, star=star, mloss=ph.massloss.EnergyLimited, struct=ph.structure.ChenRogers16, age_end=20)
+future = ph.evolve_forward(planet=p, star=star, mloss=ph.massloss.EnergyLimited, struct=ph.structure.ChenRogers16, age_end=5000)
+past = ph.evolve_back(planet=p, star=star, mloss=ph.massloss.EnergyLimited, struct=ph.structure.ChenRogers16, age_end=20)
 
 print(future.planet(700,p))
 print(f"Future starting params: Rp {future['Rp'][-1]}, Renv {future['Renv'][-1]}, Fenv {future['Fenv'][-1]}%")

@@ -164,9 +164,9 @@ def radius_to_mass(radius, Xiron, Xice):
             print ("error, cannot use Iron and Ice fraction together")
             return -1
         else:
-            mass = fsolve(iron_function,np.log10(5.),args=[Xiron,radius])
+            mass = ScipyFsolve(iron_function,np.log10(5.),args=[Xiron,radius])
     else:
-        mass = fsolve(ice_function,np.log10(5.),args=[Xice,radius])
+        mass = ScipyFsolve(ice_function,np.log10(5.),args=[Xice,radius])
 
     return 10**mass
 

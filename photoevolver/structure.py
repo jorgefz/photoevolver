@@ -109,11 +109,11 @@ def ChenRogers16(**kwargs):
     # --
     c0 = 0.131
     c1 = [-0.348, 0.631,  0.104, -0.179]
-
-    c2 = [[ 0.209,  0.028, -0.168,  0.008],
-            [ None,   0.086, -0.045, -0.036],
-            [ None,   None,   0.052,  0.031],
-            [ None,   None,   None,  -0.009]
+    c2 = [
+        [ 0.209,  0.028, -0.168,  0.008],
+        [ None,   0.086, -0.045, -0.036],
+        [ None,   None,   0.052,  0.031],
+        [ None,   None,   None,  -0.009]
     ]
     # --
     terms = [ \
@@ -205,7 +205,9 @@ def fenv_solve(fstruct, renv, mass, fbol, age, **kwargs):
     def wrapper(x, *args, **kwargs):
         kwargs['fenv'] = x[0]
         kwargs['mass'] = kwargs['mcore'] / (1 - kwargs['fenv']) if kwargs['mass'] is None else kwargs['mass']
-        return fstruct(**kwargs) - kwargs['renv']
+        ret = fstruct(**kwargs)
+        if np.isnan(ret): print("FenvSolve: structure formulation returned NaN with parameters:\n", kwargs)
+        return ret - kwargs['renv']
 
     from scipy.optimize import fsolve
     kwargs['renv'] = renv
@@ -220,7 +222,8 @@ def fenv_solve(fstruct, renv, mass, fbol, age, **kwargs):
 
     # scipy least_squares
     from scipy.optimize import least_squares
-    solution = least_squares(wrapper, fenv_guess, kwargs=kwargs, bounds=(kwargs['fenv_min'],100) )
+    fenv_min = kwargs['fenv_min'] if 'fenv_min' in kwargs else kwargs['fenv_limits'][0]
+    solution = least_squares(wrapper, fenv_guess, kwargs=kwargs, bounds=[fenv_min,0.50] )
     #print(solution)
     return solution.x[0]
 

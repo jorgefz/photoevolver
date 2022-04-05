@@ -1,14 +1,13 @@
-import photoevolver.core
-import photoevolver.massloss
-import photoevolver.structure
-#import photoevolver.old
-import photoevolver.owenwu17
-import photoevolver.libc.libc as libc
-
 
 from .version import __version__,__author__
 import os
 import platform
+
+from photoevolver import planet, tracks, evo, core, massloss, structure, owenwu17
+from photoevolver.libc import libc
+from photoevolver.evo import Planet, evolve, evolve_back, evolve_forward, Tracks, OtegiMassRadiusRelation
+from photoevolver.core import globals
+# import photoevolver.old
 
 py_dir = os.path.dirname(os.path.realpath(__file__))
 
@@ -41,6 +40,4 @@ Package description here
 
 
 """
-
-
 

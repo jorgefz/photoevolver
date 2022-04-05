@@ -1,4 +1,4 @@
-__version__ = "1.5"
+__version__ = "1.6"
 __author__ = "Jorge Fernandez"
 
 """
@@ -16,6 +16,22 @@ __author__ = "Jorge Fernandez"
 - Is there a bug with valley plots?
 
 --- Changelog ---
+
+Version 1.6
+    - Improved code standards, package structure, and simulation stability.
+    - API changed. Import Planet, and evolution functions directly from top-level, e.g.:
+        import photoevolver as ph
+        ph.Planet
+        ph.evolve_forward
+    - Added core-powered mass loss to formulations. Access with:
+        ph.massloss.CorePowered
+    - Added new function 'evolve', better written, which takes an extra argument 'mode' that can be 'past' or 'future'.
+    - Added more control over the simulation:
+        * Set photoevolver.globals.verbose to True to print out the simulation state on every iteration.
+        * Set photoevolver.globals.warnings_as_errors to True to stop the simulation if a NaN value is produced.
+        * The argument 'nan_callback' on the function 'evolve' lets the user define a custom callback called when a NaN is produced.
+    - Tracks method that intepolates data now extrapolates beyond predetermined ages.
+    - Updated readme
 
 Version 1.5.2
     - Changed structure formulation root-finding function from Scipy fsolve to Scipy least_squares. Now recalculating Renv with solved Fenv will not result in a wildly different Renv from the one originally input.

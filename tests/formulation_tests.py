@@ -104,23 +104,23 @@ def CheckPoppenhaeger2020():
     planets = ('c', 'd', 'b', 'e')
     radii = (5.6, 6.4, 10.3, 8.7)
     dists = (0.0825, 0.1083, 0.1688, 0.308)
-    p_light = [ ph.core.Planet(age=23, dist=dists[i], mcore=5,  rp=radii[i]) for i in range(4) ]
-    p_heavy = [ ph.core.Planet(age=23, dist=dists[i], mcore=10, rp=radii[i]) for i in range(4) ]
+    p_light = [ ph.Planet(age=23, dist=dists[i], mcore=5,  rp=radii[i]) for i in range(4) ]
+    p_heavy = [ ph.Planet(age=23, dist=dists[i], mcore=10, rp=radii[i]) for i in range(4) ]
      
     LF14 = ph.structure.LopezFortney14
     EL = ph.massloss.EnergyLimited
 
     t_light = []
     for p in p_light:
-        #t = ph.core.evolve_forward(planet=p, star=star, struct=LF14, mloss=EL, eff=0.1, age_end=5000)
-        t = ph.core.evolve_forward(planet=p, star=star_data, struct=LF14, mloss=EL,
+        #t = ph.evolve_forward(planet=p, star=star, struct=LF14, mloss=EL, eff=0.1, age_end=5000)
+        t = ph.evolve_forward(planet=p, star=star_data, struct=LF14, mloss=EL,
                 eff=0.1, age_end=5000, mstar=star.Mstar, beta='salz16')
         t_light.append(t)
 
     t_heavy = []
     for p in p_heavy:
-        #t = ph.core.evolve_forward(planet=p, star=star, struct=LF14, mloss=EL, eff=0.1, age_end=5000)
-        t = ph.core.evolve_forward(planet=p, star=star_data, struct=LF14, mloss=EL,
+        #t = ph.evolve_forward(planet=p, star=star, struct=LF14, mloss=EL, eff=0.1, age_end=5000)
+        t = ph.evolve_forward(planet=p, star=star_data, struct=LF14, mloss=EL,
                 eff=0.1, age_end=5000, mstar=star.Mstar, beta='salz16')
         t_heavy.append(t)
 
