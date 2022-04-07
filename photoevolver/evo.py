@@ -21,6 +21,25 @@ from.core import globals
 from .planet import OtegiMassRadiusRelation
 
 
+
+def lum_to_flux_au(lum: float, dist: float):
+	""" Luminosity to flux (per cm^2) using distance in AU """
+	return lum / (4 * np.pi * ( dist * U.au.to('cm') )**2)
+
+def lum_to_flux_pc(lum: float, dist: float):
+	""" Luminosity to flux (per cm^2) using distance in parsecs """
+	return lum / (4 * np.pi * ( dist * U.pc.to('cm') )**2)
+
+def flux_to_lum_au(flux: float, dist: float):
+	""" Flux (per cm^2) to luminosity using distance in AU """
+	return flux * (4 * np.pi * ( dist * U.au.to('cm') )**2)
+
+def flux_to_lum_pc(flux: float, dist: float):
+	""" Flux (per cm^2) to luminosity using distance in parsecs """
+	return flux * (4 * np.pi * ( dist * U.pc.to('cm') )**2)
+
+
+
 class EvoState:
 
 	fields = [
@@ -52,11 +71,11 @@ class EvoState:
 
 	def update_fluxes(self, lx: float, leuv: float, lbol: float):
 		self.lx, self.leuv, self.lbol = lx, leuv, lbol
-		self.fx   = lum_to_flux_pl(lx  , self.dist)
-		self.feuv = lum_to_flux_pl(leuv, self.dist)
-		self.fbol = lum_to_flux_pl(lbol, self.dist)
+		self.fx   = lum_to_flux_au(lx  , self.dist)
+		self.feuv = lum_to_flux_au(leuv, self.dist)
+		self.fbol = lum_to_flux_au(lbol, self.dist)
 		self.lxuv = lx + leuv
-		self.fxuv = lum_to_flux_pl(self.lxuv, self.dist)
+		self.fxuv = lum_to_flux_au(self.lxuv, self.dist)
 		# alternate names
 		self.Lbol = self.lbol
 		self.Lxuv = self.lx + self.leuv
@@ -73,14 +92,60 @@ class EvoState:
 		return self.__repr__()
 
 
-def struct_error_callback(state: EvoState):
-	warnings.warn(f"Structure equation '{state.struct_fn.__name__}' returned NaN\n {state}")
+def King18Leuv(
+		Lx     : Union[float,List],
+		Rstar  : Union[float,List],
+		energy : str = "0.1-2.4"
+	):
+	"""
+	EUV Relation by King et al 2018: https://ui.adsabs.harvard.edu/abs/2018MNRAS.478.1193K/abstract
 
-def mloss_error_callback(state: EvoState):
-	warnings.warn(f"Mass loss equation '{state.mloss_fn.__name__}' returned NaN\n {state}")
+	Parameters
+	----------
+	Lx      : float, np.ndarray
+		X-ray luminosity of the star in erg/s
+	Rstar   : float, np.ndarray
+		Radius of the star in solar radii
+	energy	: str
+		Energy range in the format "lower-upper" in keV.
+		The allowed ranges are:
+			"0.1-2.4", "0.124-2.48", "0.15-2.4", "0.2-2.4", "0.243-2.4"
 
-def lum_to_flux_pl(lum: float, dist: float):
-	return lum / (4 * np.pi * ( dist * U.au.to('cm') )**2)
+	Returns
+	-------
+	Leuv    : float, np.ndarray
+		The EUV luminosity of the star in the range 0.0136 keV to the lower range of the input X-rays
+
+	Dataset
+	-------
+		X-ray range low energy; X-ray range high energy; constant; power-law index; EUV lower range; EUV higher range; Comment by authors
+		keV;		keV;		erg/cm^2/s;	--;		keV;	keV;	--
+		xrange_i;	xrange_f;	const;		pwlaw;	euv_i;	euv_f;	comment
+		0.1;		2.4;		460;		-0.425;	0.0136;	0.1;	ROSAT PSPC
+		0.124;		2.480;		650;		-0.450;	0.0136;	0.124;	Widely used
+		0.150;		2.4;		880;		-0.467;	0.0136;	0.150;	XMM PN (lowest)
+		0.2;		2.4;		1400;		-0.493;	0.0136;	0.2;	XMM PN (usual), XMM MOS, & Swift XRT
+		0.243;		2.4;		2350;		-0.539;	0.0136;	0.243;	Chandra ACIS
+	"""
+	# model parameters
+	allowed_ranges = "0.1-2.4", "0.124-2.48", "0.15-2.4", "0.2-2.4", "0.243-2.4"
+	const = 460, 650, 880, 1400, 2350
+	pwlaw = -0.425, -0.450, -0.467, -0.493, -0.539
+
+	assert energy in allowed_ranges, (
+		f"Energy range not covered by model.\n + \
+		Options: {allowed_ranges}"
+	)
+	
+	idx = allowed_ranges.index(energy)
+	c, p = const[idx], pwlaw[idx]
+	radius_au = Rstar * Const.R_sun.to('au').value
+
+	# This relation uses X-ray and EUV fluxes at the stellar surface.
+	fxr = lum_to_flux_au(lum = Lx, dist = radius_au) # Xray flux at stellar radius
+	reuv = c * (fxr ** p)  # EUV-to-Xrays flux ratio
+	Leuv = flux_to_lum_au(flux = reuv * fxr, dist = radius_au)
+	return Leuv
 
 
 def parse_star(state: EvoState, star: Any, ages: list[float]):

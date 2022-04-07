@@ -1,4 +1,4 @@
-__version__ = "1.6"
+__version__ = "1.6.1"
 __author__ = "Jorge Fernandez"
 
 """
@@ -17,6 +17,10 @@ __author__ = "Jorge Fernandez"
 
 --- Changelog ---
 
+Version 1.6.1
+    - Fixed bug where pickling a Track object failed due to using a curried function for interpolation. Using functools.partial instead fixes the issue.
+    - Added ph.evo.King18Leuv function to calculate EUV luminosity from X-rays.
+
 Version 1.6
     - Improved code standards, package structure, and simulation stability.
     - API changed. Import Planet, and evolution functions directly from top-level, e.g.:
@@ -25,7 +29,7 @@ Version 1.6
         ph.evolve_forward
     - Added core-powered mass loss to formulations. Access with:
         ph.massloss.CorePowered
-    - Added new function 'evolve', better written, which takes an extra argument 'mode' that can be 'past' or 'future'.
+    - Added new function 'evolve' that deprecates evolve_forward and evolve_back. Use argument 'mode' for future evolution ('future') or past evolution ('past'). 
     - Added more control over the simulation:
         * Set photoevolver.globals.verbose to True to print out the simulation state on every iteration.
         * Set photoevolver.globals.warnings_as_errors to True to stop the simulation if a NaN value is produced.
