@@ -165,7 +165,7 @@ def parse_star(state: EvoState, star: Any, ages: list[float]):
 		leuv_track = np.array([star.Leuv(a) for a in ages])
 		lbol_track = np.array([star.Lbol(a) for a in ages])
 		state.mstar = star.Mstar
-		star = dict(lx=lx_track, leuv = leuv_track, lbol=lbol_track)
+		star = dict(lx = lx_track, leuv = leuv_track, lbol = lbol_track)
 	
 	elif callable(star):
 		lx_track, leuv_track, lbol_track = [ np.zeros(count) ] * 3
@@ -411,7 +411,10 @@ def evolve(
 	for i,a in zip( range(1,len(ages)-1), ages[1:]):
 		state.age = a
 
-		# [1] Update mass loss rate
+		# [1] Update fluxes
+		state.update_fluxes(star['lx'][i], star['leuv'][i], star['lbol'][i])
+
+		# [2] Update mass loss rate
 		if state.mloss_fn is None: state.mloss = 0.0
 
 		elif (state.fenv_limits[0] <= state.fenv <= state.fenv_limits[1]):
@@ -428,7 +431,7 @@ def evolve(
 			# fenv is too large
 			pass
 
-		# [2] Update envelope
+		# [3] Update envelope
 		state.menv += state.mloss_factor * state.mloss * state.tstep
 
 		if state.menv <= state.mp * state.fenv_limits[0]: # no envelope
@@ -438,17 +441,13 @@ def evolve(
 			state.rp = state.rcore
 			state.renv = 0.0
 		else:
-			state.mp = state.mcore + state.menv 
+			state.mp = state.mass = state.mcore + state.menv
 			state.fenv = state.menv / state.mp
 			new_renv = state.struct_fn(**state.as_dict())
 			if np.isnan(new_renv): nan_callback(state, state.struct_fn, "renv")
 			else: state.renv = new_renv
-			state.rp = state.renv + state.rcore
-		
-		# [3] Update other state variables
-		state.mass = state.mp
-		state.radius = state.rp
-		state.update_fluxes(star['lx'][i], star['leuv'][i], star['lbol'][i])
+			state.rp = state.radius = state.renv + state.rcore
+
 		update_tracks(tracks, state)
 		if globals.verbose: print(state)
 

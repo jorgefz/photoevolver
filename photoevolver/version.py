@@ -19,6 +19,7 @@ __author__ = "Jorge Fernandez"
 
 Version 1.6.1
     - Fixed bug where pickling a Track object failed due to using a curried function for interpolation. Using functools.partial instead fixes the issue.
+    - Fixed bug where simulation fluxes were not updated until the end of the simulation step, now these are updated at the beginning.
     - Added ph.evo.King18Leuv function to calculate EUV luminosity from X-rays.
 
 Version 1.6
