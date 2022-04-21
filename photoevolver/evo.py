@@ -79,6 +79,8 @@ class EvoState:
 		# alternate names
 		self.Lbol = self.lbol
 		self.Lxuv = self.lx + self.leuv
+		self.Lx = self.lx
+		self.Leuv = self.leuv
 
 	def __repr__(self):
 		msg = "--- Evolution State --- \n"

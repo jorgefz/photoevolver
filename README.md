@@ -2,6 +2,31 @@
 
 `photoevolver` is a Python module that evolves the gaseous envelope of planets backwards and forward in time, taking into account internal structure and cooling rate, atmospheric mass loss processes, and the stellar X-ray emission history.
 
+
+## Installation
+
+Download this repository somewhere in your machine and navigate to the modules folder
+```bash
+git clone https://github.com/jorgefz/photoevolver
+cd photoevolver
+```
+
+Compile the C functions with make
+```bash
+make
+```
+
+Install the Python module with pip
+```bash
+pip install -e .
+```
+
+The module should now be accessible through Python.
+```python
+>>> import photoevolver as ph
+```
+
+
 ## Introduction
 
 The Kepler telescope has found a surprising number of planets between the Earth and Neptune in size. These planets follow a bimodal (two-peaked) distribution in radii, with peaks at 1.5 and 2.4 Earth radii, and a *radius valley* at 1.8 Earth radii. The first peak is most likely populated by entirely rocky planets, whereas the second one consists of rocky cores with H/He-rich envelopes that can double the planet's radius and yet comprise only a few percent of its mass. This radius valley would be created by atmospheric mass loss processes that evaporate planetary atmospheres over time, completely stripping them in extreme cases (Fulton et al. 2017).
@@ -19,19 +44,6 @@ Stellar tracks code by Colin Johnstone (https://github.com/ColinPhilipJohnstone/
 Thermal evolution code by James Owen (https://github.com/jo276/EvapMass), described in the paper Owen & Campos Estrada (2020). 
 This is already included in this repository, so there's no need to install it.
 
-## Installation
-
-Download this repository somewhere in your machine
-```bash
-git clone https://github.com/jorgefz/photoevolver
-```
-
-Install the Python module with pip
-```bash
-pip install -e photoevolver
-```
-
-The module should now be accessible through Python.
 
 ## Usage
 

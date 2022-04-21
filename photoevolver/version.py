@@ -1,4 +1,4 @@
-__version__ = "1.6.1"
+__version__ = "1.6.2"
 __author__ = "Jorge Fernandez"
 
 """
@@ -11,11 +11,15 @@ __author__ = "Jorge Fernandez"
 
 - Turn Planet input variables to **kwargs
 - Function to evolve BOTH forward and back
-- Return more tracks, e.g. mass loss, eff, beta, etc
-- Fix bug with Kubyshkina 2018
-- Is there a bug with valley plots?
+- Return more tracks including custom ones, e.g. eff, beta, etc
+- Envelope loss timescale calculator
+- Unphysical envelope enlargement calculator
 
 --- Changelog ---
+
+Version 1.6.2
+	- Improved compiling pipeline for C functions by using a Makefile
+	- Renamed photoevolver.libc to photoevolver.libcfn, although the first is still available for legacy reasons.
 
 Version 1.6.1
     - Fixed bug where pickling a Track object failed due to using a curried function for interpolation. Using functools.partial instead fixes the issue.
