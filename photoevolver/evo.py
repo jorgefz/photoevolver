@@ -15,7 +15,7 @@ from .owenwu17 import mass_to_radius as owen_radius
 from .owenwu17 import radius_to_mass as owen_mass
 from .planet import Planet, indexable, is_mors_star
 from .tracks import Tracks
-from.core import globals
+from .core import globals
 
 # temporary
 from .planet import OtegiMassRadiusRelation
@@ -38,6 +38,10 @@ def flux_to_lum_pc(flux: float, dist: float):
 	""" Flux (per cm^2) to luminosity using distance in parsecs """
 	return flux * (4 * np.pi * ( dist * U.pc.to('cm') )**2)
 
+def equilibrium_temperature(fx: float) -> float:
+	""" Returns equlibrium temperature in K of a planet given bolometric influx in erg/cm^2/s """
+	flux_si = (U.erg / (U.cm)**2 / U.s).to(" W/m^2 ")
+	return (fx * flux_si / (4 * Const.sigma_sb.value))**(1/4)
 
 
 class EvoState:
@@ -68,6 +72,10 @@ class EvoState:
 	def as_dict(self) -> dict:
 		""" Get simulation state as a dictionary """
 		return self.__dict__
+
+	def to_dict(self) -> dict:
+		""" Get simulation state as a dictionary """
+		return deepcopy(self.__dict__)
 
 	def update_fluxes(self, lx: float, leuv: float, lbol: float):
 		self.lx, self.leuv, self.lbol = lx, leuv, lbol
@@ -196,13 +204,15 @@ def planet_density(mp, rp):
 
 
 def new_tracks(planet: Planet):
-	keys = ('Age', 'Lbol', 'Lxuv', 'Rp', 'Mp', 'Menv', 'Renv', 'Fenv', 'Dens', 'Mloss')
+	keys = 'Age', 'Lbol', 'Lx', 'Leuv', 'Lxuv', 'Rp', 'Mp', 'Menv', 'Renv', 'Fenv', 'Dens', 'Mloss', 'Teq'
 	return Tracks(base_pl = planet, keys = keys)
 
 
 def update_tracks(tracks: Tracks, state: EvoState):
 	tracks['Age']   += [ state.age ]
 	tracks['Lbol']  += [ state.lbol ]
+	tracks['Lx']    += [ state.lx ]
+	tracks['Leuv']  += [ state.leuv ]
 	tracks['Lxuv']  += [ state.lx + state.leuv ]
 	tracks['Rp']    += [ state.rp ]
 	tracks['Mp']    += [ state.mp ]
@@ -211,6 +221,7 @@ def update_tracks(tracks: Tracks, state: EvoState):
 	tracks['Fenv']  += [ state.fenv ]
 	tracks['Dens']  += [ planet_density(mp = state.mp, rp = state.rp) ]
 	tracks['Mloss'] += [ state.mloss ]
+	tracks['Teq']   += [ equilibrium_temperature(state.fx) ]
 
 
 def reverse_tracks(tracks: Tracks):

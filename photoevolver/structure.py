@@ -12,8 +12,8 @@ Models:
 """
 
 import numpy as np
-import astropy.constants as Const
-import astropy.units as U
+import astropy.constants as const
+from astropy import units
 import warnings
 
 #from .EvapMass.planet_structure import solve_structure
@@ -21,8 +21,8 @@ import warnings
 from .owenwu17 import RadiusOwenWu17
 
 # Bolometric flux at Earth (W/m^2)
-Fbol_earth = Const.L_sun.value / (4 * np.pi * (Const.au.value)**2 )
-ergcm2s_to_Wm2 = ( U.erg/U.s/U.cm**2 ).to('W/m^2')
+Fbol_earth = const.L_sun.value / (4 * np.pi * (const.au.value)**2 )
+ergcm2s_to_Wm2 = ( units.erg / units.s / units.cm**2 ).to('W/m^2')
 
 
 def _keyword_check(keywords, params):
@@ -177,7 +177,7 @@ def OwenWu17(**kwargs):
     # --
     Xenv = fenv / (1 - fenv)
     Mcore = kwargs['mass'] * fenv / Xenv
-    Teq = ( kwargs['fbol'] * ergcm2s_to_Wm2 / (4*Const.sigma_sb.value) ) ** (1/4)
+    Teq = ( kwargs['fbol'] * ergcm2s_to_Wm2 / (4*const.sigma_sb.value) ) ** (1/4)
     Tkh = kwargs['age'] if kwargs['age'] > 100.0 else 100.0
     Xiron = kwargs['Xiron'] if 'Xiron' in kwargs else 1/3
     Xice = kwargs['Xice'] if 'Xice' in kwargs else 0.0

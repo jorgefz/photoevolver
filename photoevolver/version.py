@@ -1,4 +1,4 @@
-__version__ = "1.6.2"
+__version__ = "1.6.3"
 __author__ = "Jorge Fernandez"
 
 """
@@ -16,6 +16,16 @@ __author__ = "Jorge Fernandez"
 - Unphysical envelope enlargement calculator
 
 --- Changelog ---
+
+Version 1.6.3
+    - Solved bug where ph.Tracks.load was missing the class argument required as a classmethod.
+    - Added new quantities to tracks: Lx, Leuv, Teq.
+    - Added EvoState method 'to_dict' which returns a copy of the state data.
+    - Added `solve_structure` which calculates the envelope mass fraction of a planet
+        given its observed mass and radius alone (along with its age and orbital distance,
+        and the star's bolometric luminosity).
+    - Added `solve_structure_uncert`, which behaves like `solve_structure` but takes
+    and returns values with uncertainties (`uncertainties.ufloat`).
 
 Version 1.6.2
 	- Improved compiling pipeline for C functions by using a Makefile

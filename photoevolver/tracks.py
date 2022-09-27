@@ -13,7 +13,7 @@ import functools
 class Tracks:
 
 	@classmethod
-	def load(filename: str) -> 'Tracks':
+	def load(cls: 'Tracks', filename: str) -> 'Tracks':
 		with open(filename, 'rb') as handle:
 			tracks = pickle.load(handle)
 		return tracks

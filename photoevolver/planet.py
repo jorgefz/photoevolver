@@ -2,8 +2,12 @@
 
 import numpy as np
 from typing import Any, Union, List, Callable
+import uncertainties as uncert
+from scipy.optimize import fsolve as scipy_fsolve
+from astropy import units
 
 from .owenwu17 import mass_to_radius as owen_radius, radius_to_mass as owen_mass
+from .structure import ChenRogers16
 
 
 # Utils functions
@@ -123,6 +127,88 @@ def otegi2020_radius(mass, error=0.0, mode='rocky'):
 	radius_err = np.sqrt( (const_term)**2 + (mass_term)**2 + (pow_term)**2 )
 	return radius, radius_err
 
+
+
+def solve_structure(mass, radius, age, dist, lbol,
+					env_fn = ChenRogers16,
+					mr_fn = OtegiMassRadiusRelation):
+	"""
+	Solves for the structure of a planet given its observed mass and radius,
+	as well as orbital and stellar parameters.
+	Returns the planet parameters in a dict.
+	"""
+
+	def solve_fn(fenv, mass, radius, age, dist, lbol):
+
+		# Calculate envelope radius from other known parameters
+		mcore = (1.0 - fenv) * mass
+		rcore = mr_fn(mass = mcore)
+		renv1 = radius - rcore
+
+		# Calculate envelope radius from envelope structure formulation
+		fbol = lbol / (4.0 * np.pi * (dist * units.au.to('cm'))**2)
+		renv2 = env_fn(mass=mass, fenv=fenv, fbol=fbol,
+						age=age, rcore=rcore, dist=dist)
+
+		return renv1 - renv2
+
+	fenv, info, sucess, msg = scipy_fsolve(
+				func = solve_fn,
+				x0 = 0.05, full_output = True,
+				args = (mass, radius, age, dist, lbol))
+	fenv = float(fenv)
+
+	if sucess != 1:
+		print("[solve_structure] Failed to find a solution for planet structure")
+		print(f"	Mass = {mass}, radius = {radius}, dist = {dist}, age = {age}")
+		print(msg)
+		return None
+
+	solved_planet = dict(
+		mass = mass, radius = radius,
+		fenv = fenv, age = age, dist = dist,
+		mcore = (1.0 - fenv) * mass)
+	
+	solved_planet['rcore'] = mr_fn(mass=solved_planet['mcore'])
+	solved_planet['renv'] = radius - solved_planet['rcore']
+	solved_planet['menv'] = mass * fenv
+	return solved_planet
+
+
+def solve_structure_uncert(
+	mass, radius, age, dist, lbol,
+	env_fn = ChenRogers16,
+	mr_fn = OtegiMassRadiusRelation):
+	"""
+	Solves for the structure of a planet given its observed mass and radius,
+	as well as orbital and stellar parameters.
+	Accepts variables with uncertainties and returns planet parameters
+	with calculated uncertainties as well.
+	Returns the planet parameters in a dict.
+	"""
+
+	def wrapper(*args, **kwargs):
+		"""solve_structure but only returns envelope mass fraction"""
+		params = solve_structure(*args, **kwargs)
+		return params['fenv']
+
+	# wrap functions to acept uncertainties
+	solver_uc = uncert.wrap(wrapper)
+	mr_uc = uncert.wrap(mr_fn)
+
+	# Solve for envelope and recalculate planet parameters
+	fenv = solver_uc(mass, radius, age, dist, lbol)
+	mcore = (1.0 - fenv) * mass
+	rcore = mr_uc(mass = mcore)
+	renv = radius - rcore
+	
+	params = dict(
+		mass = mass, radius = radius,
+		age = age, dist = dist,
+		mcore =mcore, rcore = rcore,
+		fenv = fenv, renv = renv)
+
+	return params
 
 
 

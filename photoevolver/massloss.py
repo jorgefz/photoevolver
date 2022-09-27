@@ -5,9 +5,8 @@ Includes several atmosoheric mass loss formulations
 """
 
 import numpy as np
-import astropy.constants as Const
-import astropy.units as U
-
+import astropy.constants as const
+from astropy import units
 
  
 def _keyword_check(keywords, params):
@@ -31,8 +30,8 @@ def salz16_beta(**kwargs):
 	"""
 	mp = kwargs['mp']
 	rp = kwargs['rp']
-	fxuv = kwargs['fxuv'] if 'fxuv' in kwargs else kwargs['Lxuv'] / (4*np.pi*(kwargs['dist']*U.au.to('cm'))**2)
-	potential = Const.G.to('erg*m/g^2').value * mp * Const.M_earth.to('g').value / (rp * Const.R_earth.to('m').value)
+	fxuv = kwargs['fxuv'] if 'fxuv' in kwargs else kwargs['Lxuv'] / (4*np.pi*(kwargs['dist']*units.au.to('cm'))**2)
+	potential = const.G.to('erg*m/g^2').value * mp * const.M_earth.to('g').value / (rp * const.R_earth.to('m').value)
 	log_beta = -0.185*np.log10(potential) + 0.021*np.log10(fxuv) + 2.42
 	if log_beta < 0.0: log_beta = 0.0
 	# upper limit to beta
@@ -47,7 +46,7 @@ def salz16_eff(**kwargs):
 	"""
 	mp = kwargs['mp']
 	rp = kwargs['rp']
-	potential = Const.G.to('erg*m/g^2').value * mp * Const.M_earth.to('g').value / (rp * Const.R_earth.to('m').value)
+	potential = const.G.to('erg*m/g^2').value * mp * const.M_earth.to('g').value / (rp * const.R_earth.to('m').value)
 	v = np.log10(potential)
 	if   ( v < 12.0):		   log_eff = np.log10(0.23) # constant
 	if   (12.0  < v <= 13.11):  log_eff = -0.44*(v-12.0) - 0.5
@@ -93,24 +92,24 @@ def EnergyLimited(**kwargs):
 	# --
 	# Unit conversions
 	kwargs['Lxuv']   *= 1e-7 # erg/s to Watt
-	kwargs['mstar']  *= Const.M_sun.value # M_sun to kg
-	kwargs['mass']   *= Const.M_earth.value # M_earth to kg
-	kwargs['radius'] *= Const.R_earth.value # R_earth to m
-	kwargs['dist']   *= Const.au.value # AU to m
+	kwargs['mstar']  *= const.M_sun.value # M_sun to kg
+	kwargs['mass']   *= const.M_earth.value # M_earth to kg
+	kwargs['radius'] *= const.R_earth.value # R_earth to m
+	kwargs['dist']   *= const.au.value # AU to m
 	Fxuv = kwargs['Lxuv'] / ( 4 * np.pi * (kwargs['dist'])**2 )
 	# Variable efficiency and Rxuv
 	if 'eff' not in kwargs: kwargs['eff'] = 0.15
-	elif kwargs['eff'] == 'salz16': kwargs['eff'] = salz16_eff(kwargs['mass']/Const.M_earth.value, kwargs['radius']/Const.R_earth.value)
+	elif kwargs['eff'] == 'salz16': kwargs['eff'] = salz16_eff(kwargs['mass']/const.M_earth.value, kwargs['radius']/const.R_earth.value)
 	elif type(kwargs['eff']) is str: kwargs['eff'] = 0.15
 
 	if 'beta' not in kwargs: kwargs['beta'] = 1.0
 	elif kwargs['beta'] == 'salz16':
-		kwargs['beta'] = salz16_beta(fxuv=Fxuv*1e3, mp=kwargs['mass']/Const.M_earth.value, rp=kwargs['radius']/Const.R_earth.value)
+		kwargs['beta'] = salz16_beta(fxuv=Fxuv*1e3, mp=kwargs['mass']/const.M_earth.value, rp=kwargs['radius']/const.R_earth.value)
 	elif type(kwargs['beta']) is str: kwargs['beta'] = 1.0
 	# Energy-limited equation
 	xi =( kwargs['dist'] / kwargs['radius'] ) * ( kwargs['mass'] / kwargs['mstar'] / 3)**(1/3)
 	K_tide = 1 - 3/(2*xi) + 1/(2*(xi)**3) 
-	mloss = kwargs['beta']**2 * kwargs['eff'] * np.pi * Fxuv * kwargs['radius']**3 / (Const.G.value * K_tide * kwargs['mass'])
+	mloss = kwargs['beta']**2 * kwargs['eff'] * np.pi * Fxuv * kwargs['radius']**3 / (const.G.value * K_tide * kwargs['mass'])
 	return mloss * 5.28e-12 # Earth masses per Myr
 
 
@@ -147,7 +146,7 @@ def Kubyshkina18(**kwargs):
 	}
 	if 'safe' in kwargs and kwargs['safe'] is True: _bound_check(bounds, kwargs)
 	# --
-	# Constants and parameters
+	# constants and parameters
 	large_delta = {
 		'beta':  16.4084,
 		'alpha': [1.0, -3.2861, 2.75],
@@ -172,13 +171,13 @@ def Kubyshkina18(**kwargs):
 	Lbol = kwargs['Lbol']
 	dist = kwargs['dist']
 
-	conv = (U.erg / U.cm**2 / U.s).to('W/m^2') # erg/cm^2/s to W/m^2
-	Fxuv = Lxuv / (4 * np.pi * (dist*Const.au.to('cm').value)**2 )
-	Fbol = Lbol / (4 * np.pi * (dist*Const.au.to('cm').value)**2 )
-	Teq =  ( Fbol * conv / (4*Const.sigma_sb.value) )**(1/4)
-	mH = Const.m_p.value +  Const.m_e.value # H-atom mass (kg)
+	conv = (units.erg / units.cm**2 / units.s).to('W/m^2') # erg/cm^2/s to W/m^2
+	Fxuv = Lxuv / (4 * np.pi * (dist*const.au.to('cm').value)**2 )
+	Fbol = Lbol / (4 * np.pi * (dist*const.au.to('cm').value)**2 )
+	Teq =  ( Fbol * conv / (4*const.sigma_sb.value) )**(1/4)
+	mH = const.m_p.value +  const.m_e.value # H-atom mass (kg)
 
-	Jeans_param = Const.G.value * (mp*Const.M_earth.value) * (mH) / (Const.k_B.value * Teq * (rp*Const.R_earth.value) )
+	Jeans_param = const.G.value * (mp*const.M_earth.value) * (mH) / (const.k_B.value * Teq * (rp*const.R_earth.value) )
 	eps = Epsilon(rp, Fxuv, dist) 
 	xp = small_delta if Jeans_param < np.exp(eps) else large_delta
 	Kappa = xp['zeta'] + xp['theta']*np.log(dist)
@@ -190,17 +189,17 @@ def Kubyshkina18(**kwargs):
 
 def EquilibriumTemperature(Lbol, a):
 	"""Lbol(erg/s), a(AU), returns T(K)"""
-	top = Lbol * U.erg.to('J')
-	bottom = 16 * Const.sigma_sb.value * np.pi * (a * U.au.to('m'))**2
+	top = Lbol * units.erg.to('J')
+	bottom = 16 * const.sigma_sb.value * np.pi * (a * units.au.to('m'))**2
 	return (top/bottom)**0.25
 
 
 def JeansParam(Mplanet, Rplanet, Lbol, Dist):
 	Teq = EquilibriumTemperature(Lbol, Dist)
-	Mplanet *= Const.M_earth.value
-	Rplanet *= Const.R_earth.value
-	m_H = Const.m_p.value
-	jeans = Const.G.value * Mplanet * m_H / (Const.k_B.value * Teq * Rplanet )
+	Mplanet *= const.M_earth.value
+	Rplanet *= const.R_earth.value
+	m_H = const.m_p.value
+	jeans = const.G.value * Mplanet * m_H / (const.k_B.value * Teq * Rplanet )
 	return jeans
 
 
@@ -209,7 +208,7 @@ def CorePowered(**kwargs):
 	
 	gparams = dict(
 		gamma = 7/5, # adiabatic index
-		mu = 2 * Const.m_p.value , # kg, atmosphere molecular mass
+		mu = 2 * const.m_p.value , # kg, atmosphere molecular mass
 
 	)
 
@@ -225,9 +224,9 @@ def CorePowered(**kwargs):
 		nonlocal gparams
 		gamma = gparams['gamma']
 		mu = gparams['mu']
-		Mcore *= Const.M_earth.value
-		Rbondi = (gamma-1)/gamma * Const.G.value * Mcore * mu / (Const.k_B.value * Teq)
-		return Rbondi / Const.R_earth.value
+		Mcore *= const.M_earth.value
+		Rbondi = (gamma-1)/gamma * const.G.value * Mcore * mu / (const.k_B.value * Teq)
+		return Rbondi / const.R_earth.value
 
 
 	def DensityRcb(Menv, Renv, Mcore, Rcore, Teq):
@@ -243,11 +242,11 @@ def CorePowered(**kwargs):
 		mu = gparams['mu']
 		Rbondi = ModifiedBondiRadius(Mcore, Teq)
 		# Unit conversions
-		Rbondi *= Const.R_earth.value
-		Renv *= Const.R_earth.value
-		Rcore *= Const.R_earth.value
-		Menv *= Const.M_earth.value
-		Mcore *= Const.M_earth.value
+		Rbondi *= const.R_earth.value
+		Renv *= const.R_earth.value
+		Rcore *= const.R_earth.value
+		Menv *= const.M_earth.value
+		Mcore *= const.M_earth.value
 		# Calculation
 		RhoRcb = gamma / (gamma-1)
 		RhoRcb *= Menv / (4 * np.pi * Rcore**2 * Renv)
@@ -258,34 +257,34 @@ def CorePowered(**kwargs):
 	def SoundSpeed(Teq):
 		nonlocal gparams
 		mu = gparams['mu']
-		return np.sqrt( Const.k_B.value * Teq / mu )
+		return np.sqrt( const.k_B.value * Teq / mu )
 
 
 	def SonicPointRadius(Mplanet, Teq):
-		Mplanet *= Const.M_earth.value
+		Mplanet *= const.M_earth.value
 		cs = SoundSpeed(Teq)
-		Rs = Const.G.value * Mplanet / (2 * cs**2)
-		return Rs / Const.R_earth.value
+		Rs = const.G.value * Mplanet / (2 * cs**2)
+		return Rs / const.R_earth.value
 
 
 	def AtmosphericOpacity(RhoRcb, Zstar = 1.0):
 		beta = 0.6
-		cm = U.cm
-		g = U.g
+		cm = units.cm
+		g = units.g
 		opacity = 0.1 * Zstar * (RhoRcb)**beta # cm^2 / g
 		opacity *= 0.01 # to m^2 / g
 		return opacity
 
 	def PlanetLuminosity(Teq, Rbondi, RhoRcb):
-		Rbondi *= Const.R_earth.value
+		Rbondi *= const.R_earth.value
 		opacity = AtmosphericOpacity(RhoRcb)
-		return 64*np.pi/3 * Const.sigma_sb.value * Teq**4 * Rbondi / opacity / RhoRcb
+		return 64*np.pi/3 * const.sigma_sb.value * Teq**4 * Rbondi / opacity / RhoRcb
 
 	def PlanetEnergyLimitedMloss(mass, radius, Lplanet, Dist, Mstar):
 		EL = EnergyLimited
 		Lplanet = 1e7 * Lplanet # to erg/s
 		mloss = EL(mass=mass, radius=radius, Lxuv=Lplanet, dist=Dist, mstar=Mstar)
-		return mloss * Const.M_earth.value / U.Myr.to('s')
+		return mloss * const.M_earth.value / units.Myr.to('s')
 
 	def CorePoweredMloss(mcore, rcore, menv, renv, Lbol, dist, verbose=False, **kwargs):
 		
@@ -295,15 +294,15 @@ def CorePowered(**kwargs):
 		RhoRcb = DensityRcb(menv, renv, mcore, rcore, Teq)
 
 		# unit conversions
-		menv *= Const.M_earth.value
-		mcore *= Const.M_earth.value
-		renv *= Const.R_earth.value
-		rcore *= Const.R_earth.value
-		Rs *= Const.R_earth.value
+		menv *= const.M_earth.value
+		mcore *= const.M_earth.value
+		renv *= const.R_earth.value
+		rcore *= const.R_earth.value
+		Rs *= const.R_earth.value
 
 		# calculation
 		Rrcb = renv + rcore
-		expn = (-1) * Const.G.value * (menv + mcore) / (cs**2 * Rrcb)
+		expn = (-1) * const.G.value * (menv + mcore) / (cs**2 * Rrcb)
 		mloss = 4 * np.pi * Rs**2 * cs * RhoRcb * np.exp(expn)
 		mloss *= 1e3 # to g/s 	
 
@@ -326,7 +325,7 @@ def CorePowered(**kwargs):
 		mstar = kwargs['mstar'] if 'mstar' in kwargs else 0.74, # force star mass assuming K2-136
 		verbose = False
 	)
-	mloss *= U.Myr.to('s') / Const.M_earth.to('g').value # g/s to Me/Myr
+	mloss *= units.Myr.to('s') / const.M_earth.to('g').value # g/s to Me/Myr
 	return mloss
 
 
