@@ -8,6 +8,7 @@ import numpy as np
 import astropy.constants as const
 from astropy import units
 
+from .K18interp import K18Interpolator
  
 def _keyword_check(keywords, params):
 	for f in keywords:

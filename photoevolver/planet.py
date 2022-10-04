@@ -131,16 +131,46 @@ def otegi2020_radius(mass, error=0.0, mode='rocky'):
 
 def solve_structure(mass, radius, age, dist, lbol,
 					env_fn = ChenRogers16,
-					mr_fn = OtegiMassRadiusRelation):
+					mr_fn = OtegiMassRadiusRelation,
+					fenv_start = 0.05):
 	"""
 	Solves for the structure of a planet given its observed mass and radius,
 	as well as orbital and stellar parameters.
 	Returns the planet parameters in a dict.
+
+	Parameters
+	----------
+		mass:	(float) -> Mass of the planet in Earth masses.
+		radius:	(float) -> Radius of the planet in Earth radii.
+		age:	(float) -> Radius of the planet in Earth radii.
+		dist:	(float) -> Semimajor-axis of the planet's orbit in AU.
+		lbol:	(float) -> Bolometric luminosity of the host star in erg/s.
+		env_fn:	(callable) -> Envelope structure formulation of signature:
+				Parameters: (float) -> mass, fenv, fbol, age, rcore, dist
+				Returns: 	(float) -> envelope_radius
+				By default, it uses Chen & Rogers (2016).
+		mr_fn:	(callable) -> Mass-radius relation for rocky cores of signature:
+				Keyword parameters: (float) -> rocky_mass
+				Returns: (float) -> rocky_radius 
+				By default, it uses Otegi et al. (2020).
+		fenv_start: (float) -> Initial guess for the envelope mass fraction.
+					By default, it is set to 0.05 (envelope_mass => 5% of planet_mass)
+
+	Returns
+	-------
+		(dict) -> Solved internal structure of the planet as dict keys in relevant units:
+			mass, radius, mcore, rcore, fenv, renv, age, dist, success.
+			`success` key is a boolean that specifies whether a solution was found.
 	"""
 
 	def solve_fn(fenv, mass, radius, age, dist, lbol):
+		"""
+		Returns the difference between the envelope radius calculated
+		by the mass-radius relation and the one from the envelope
+		structure formulation, given a mass fraction.
+		"""
 
-		# Calculate envelope radius from other known parameters
+		# Calculate envelope radius from mass-radius relation
 		mcore = (1.0 - fenv) * mass
 		rcore = mr_fn(mass = mcore)
 		renv1 = radius - rcore
@@ -152,44 +182,80 @@ def solve_structure(mass, radius, age, dist, lbol,
 
 		return renv1 - renv2
 
+	# Root finder
 	fenv, info, sucess, msg = scipy_fsolve(
-				func = solve_fn,
-				x0 = 0.05, full_output = True,
-				args = (mass, radius, age, dist, lbol))
+		func = solve_fn,
+		x0 = fenv_start, full_output = True,
+		args = (mass, radius, age, dist, lbol)
+	)
 	fenv = float(fenv)
-
-	if sucess != 1:
-		print("[solve_structure] Failed to find a solution for planet structure")
-		print(f"	Mass = {mass}, radius = {radius}, dist = {dist}, age = {age}")
-		print(msg)
-		return None
 
 	solved_planet = dict(
 		mass = mass, radius = radius,
 		fenv = fenv, age = age, dist = dist,
-		mcore = (1.0 - fenv) * mass)
-	
+		mcore = (1.0 - fenv) * mass,
+		success = True
+	)
 	solved_planet['rcore'] = mr_fn(mass=solved_planet['mcore'])
 	solved_planet['renv'] = radius - solved_planet['rcore']
 	solved_planet['menv'] = mass * fenv
+
+	if sucess != 1:
+		print("[solve_structure] Failed to find a solution for planet structure")
+		print(f"\t-> Mass = {mass}, radius = {radius}, dist = {dist}, age = {age}")
+		print(f"\t-> {msg}")
+		print(f"\t-> {info}")
+		solved_planet['success'] = False
+
 	return solved_planet
 
 
 def solve_structure_uncert(
 	mass, radius, age, dist, lbol,
 	env_fn = ChenRogers16,
-	mr_fn = OtegiMassRadiusRelation):
+	mr_fn = OtegiMassRadiusRelation,
+	fenv_start = 0.05):
 	"""
 	Solves for the structure of a planet given its observed mass and radius,
 	as well as orbital and stellar parameters.
 	Accepts variables with uncertainties and returns planet parameters
 	with calculated uncertainties as well.
-	Returns the planet parameters in a dict.
+	
+	Parameters
+	----------
+		mass:	(float, ufloat) -> Mass of the planet in Earth masses.
+		radius:	(float, ufloat) -> Radius of the planet in Earth radii.
+		age:	(float, ufloat) -> Radius of the planet in Earth radii.
+		dist:	(float, ufloat) -> Semimajor-axis of the planet's orbit in AU.
+		lbol:	(float, ufloat) -> Bolometric luminosity of the host star in erg/s.
+		env_fn:	(callable) -> Envelope structure formulation of signature:
+				Parameters: (float) -> mass, fenv, fbol, age, rcore, dist
+				Returns: 	(float) -> envelope_radius
+				By default, it uses Chen & Rogers (2016).
+		mr_fn:	(callable) -> Mass-radius relation for rocky cores of signature:
+				Keyword parameters: (float) -> rocky_mass
+				Returns: (float) -> rocky_radius 
+				By default, it uses Otegi et al. (2020).
+		fenv_start: (float) -> Initial guess for the envelope mass fraction.
+					By default, it is set to 0.05 (envelope_mass => 5% of planet_mass)
+
+	Returns
+	-------
+		(dict) -> Solved internal structure of the planet as dict keys in relevant units:
+			mass, radius, mcore, rcore, fenv, renv, age, dist, success.
+			`success` key is a boolean that specifies whether a solution was found.
 	"""
 
 	def wrapper(*args, **kwargs):
 		"""solve_structure but only returns envelope mass fraction"""
-		params = solve_structure(*args, **kwargs)
+		params = solve_structure(*args, **kwargs,
+			env_fn = env_fn, mr_fn = mr_fn, fenv_start = fenv_start
+		)
+		if params['success'] is False:
+			print("""
+			[solve_structure_uncert] Failed to find a solution for planet structure).
+			Try running without uncertainties with `solve_structure`.
+			""")
 		return params['fenv']
 
 	# wrap functions to acept uncertainties
@@ -205,8 +271,9 @@ def solve_structure_uncert(
 	params = dict(
 		mass = mass, radius = radius,
 		age = age, dist = dist,
-		mcore =mcore, rcore = rcore,
-		fenv = fenv, renv = renv)
+		mcore = mcore, rcore = rcore,
+		fenv = fenv, renv = renv
+	)
 
 	return params
 

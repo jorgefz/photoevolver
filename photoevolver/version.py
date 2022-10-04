@@ -17,6 +17,12 @@ __author__ = "Jorge Fernandez"
 
 --- Changelog ---
 
+Version 1.6.4
+    - Changed behaviour of `solve_structure` when solution could not be found.
+        Now it returns the solution status as a boolean `success` as part of the return dict.
+    - Updated function docs and readme.
+    - Added Kubyshkina & Fossati (2021) grid and interpolator `ph.massloss.K18Interpolator`
+
 Version 1.6.3
     - Solved bug where ph.Tracks.load was missing the class argument required as a classmethod.
     - Added new quantities to tracks: Lx, Leuv, Teq.

@@ -8,17 +8,16 @@
 Download this repository somewhere in your machine and navigate to the modules folder
 ```bash
 git clone https://github.com/jorgefz/photoevolver
-cd photoevolver
 ```
 
-Compile the C functions with make
+Optionally, compile the C functions with make
 ```bash
 make
 ```
 
 Install the Python module with pip
 ```bash
-pip install -e .
+pip install -e photoevolver
 ```
 
 The module should now be accessible through Python.
@@ -27,15 +26,15 @@ The module should now be accessible through Python.
 ```
 
 
-## Introduction
+## Scientific Background
 
 The Kepler telescope has found a surprising number of planets between the Earth and Neptune in size. These planets follow a bimodal (two-peaked) distribution in radii, with peaks at 1.5 and 2.4 Earth radii, and a *radius valley* at 1.8 Earth radii. The first peak is most likely populated by entirely rocky planets, whereas the second one consists of rocky cores with H/He-rich envelopes that can double the planet's radius and yet comprise only a few percent of its mass. This radius valley would be created by atmospheric mass loss processes that evaporate planetary atmospheres over time, completely stripping them in extreme cases (Fulton et al. 2017).
 
-The leading theory that explains the atmospheric mass loss is *photoevaporation*, which states that stellar X-rays produced at the corona are readily absorbed by the upper layers of planetary atmospheres, which expand to the Roche lobe and thus escape. Stellar X-rays are not constant, but tied to the star's rotation period. Faster rotators have a stronger internal dynamo mechanism that produces a greater X-ray emission. Stars also spin down with time, reducing their X-ray output by an order of magnitude within the first 100 Myr of age (Wright et al. 2011).
+One mechanism under which envelopes can undergo mass loss is *photoevaporation*, which states that stellar X-rays produced at the corona are readily absorbed by the upper layers of planetary atmospheres, which expand to the Roche lobe and thus escape. Stellar X-rays are not constant, but tied to the star's rotation period. Faster rotators have a stronger internal dynamo mechanism that produces a greater X-ray emission. Stars also spin down with time, reducing their X-ray output by an order of magnitude within the first 100 Myr of age (Wright et al. 2011).
 
 A description of a planet's evaporation past would thus require the planet's internal structure, the X-ray emission history of the host star, and a formulation for the interaction between the atmosphere and X-ray photons that outputs the mass loss rate.
 
-## Dependencies
+## Dependencies, useful modules, and credits
 
 ### Mors (optional)
 Stellar tracks code by Colin Johnstone (https://github.com/ColinPhilipJohnstone/Mors) described in the paper by Johnstone et al (2020).
@@ -43,6 +42,13 @@ Stellar tracks code by Colin Johnstone (https://github.com/ColinPhilipJohnstone/
 ### EvapMass (already included)
 Thermal evolution code by James Owen (https://github.com/jo276/EvapMass), described in the paper Owen & Campos Estrada (2020). 
 This is already included in this repository, so there's no need to install it.
+
+### Kubyshkina & Fossati (2021) grid and interpolator (already included)
+Updated grid of planet parameters and mass loss rates based on the
+hydrodynamic simulations by Kubyshkina et al. (2018).
+Reference: https://ui.adsabs.harvard.edu/abs/2021RNAAS...5...74K/abstract).
+Zenodo repository: https://zenodo.org/record/4643823
+This work is licensed under the Creative Commons Attribution-NonCommercial 4.0 International Public License (https://creativecommons.org/licenses/by-nc/4.0/).
 
 
 ## Usage
@@ -76,10 +82,20 @@ Envelope  TBD       0.05      [1.00%]
 Total     TBD       5.05
 
 ```
-"TBD" on Envelope radius means it hasn't been calculated yet. The planet needs a formulation for its internal structure, 
-a way to obtain the envelope radius from its mass. 
+"TBD" on Envelope radius means it hasn't been calculated yet. The planet needs a formulation for its internal structure, a way to obtain the envelope radius from its mass.
 
-Now, we will define these formulations and evolve the planet. The main function to do so is the following.
+If you only have its measured mass and radius, you may first solve its structure
+before creating a `Planet object` by using the function ´solve_structure´:
+
+```python
+>>> solved = ph.planet.solve_structure(mass=18.0, radius=3.5, age=500, dist=0.01, lbol=1e33)
+>>> solved
+{'mass': 18.0, 'radius': 3.5, 'fenv': 0.014726106243020608, 'age': 500, 'dist': 0.01, 'mcore': 17.734930087625628, 'success': True, 'rcore': 2.3713615518228064, 'renv': 1.1286384481771936, 'menv': 0.26506991237437094}
+```
+In the returning dictionary, the keyword `success` indicates whether a solution for the structure was found. You may now input these parameters into the `Planet` object.
+Alternatively, you may use `solve_structure_uncert`, which takes in and returns values with uncertainties, as provided by the module ´uncertainties´.
+
+Now, we can choose appropriate formulations and evolve the planet. The main function to do so is `ph.evolve`.
 ```python
     ph.evolve(planet, star, struct, mloss, end)
 ```
@@ -168,4 +184,4 @@ Saving and loading from or to disk is done with the functions `Tracks.save(filen
 * [Owen & Campos Estrada (2021)](https://ui.adsabs.harvard.edu/abs/2020MNRAS.491.5287O/abstract)
 * [Otegi et al. (2021)](https://ui.adsabs.harvard.edu/abs/2020A%26A...634A..43O/abstract)
 * [Salz et al. (2016)](https://ui.adsabs.harvard.edu/abs/2016A%26A...585L...2S/abstract)
-
+* [Kubyshkina & Fossati (2021)](https://ui.adsabs.harvard.edu/abs/2021RNAAS...5...74K/abstract)
