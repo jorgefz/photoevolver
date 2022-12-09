@@ -3,23 +3,46 @@
 import numpy as np
 from typing import Any, Union, List, Callable
 import uncertainties as uncert
+from uncertainties import ufloat, wrap as uwrap
 from scipy.optimize import fsolve as scipy_fsolve
 from astropy import units
+
+from .utils import flux, luminosity
 
 from .owenwu17 import mass_to_radius as owen_radius, radius_to_mass as owen_mass
 from .structure import ChenRogers16
 
 
-# Utils functions
-def indexable(obj):
-	return hasattr(obj, '__getitem__')
+def Otegi20RockyMass(radius :float, no_errors :bool = False) -> float:
+	"""Calculates the rocky mass from a radius using the M-R relations by Otegi+20"""
+	scaling = ufloat(0.90, 0.06)
+	exponent = ufloat(3.45, 0.12)
+	if no_errors is True:
+		return scaling.nominal_value * radius ** exponent.nominal_value
+	return scaling * radius ** exponent
 
-def is_mors_star(obj):
-	try:
-		import Mors
-		return isinstance(obj, Mors.Star)
-	except ImportError:
-		return False
+def Otegi20RockyRadius(mass :float, no_errors :bool = False) -> float:
+	"""Calculates the rocky radius from a mass using the M-R relations by Otegi+20"""
+	scaling = ufloat(1.03, 0.02)
+	exponent = ufloat(0.29, 0.01)
+	if no_errors is True:
+		return scaling.nominal_value * mass ** exponent.nominal_value
+	return scaling * mass ** exponent
+
+def Otegi20MR(**kwargs) -> float:
+	"""Calculates rocky radius if mass provided, and rocky mass if radius provided"""
+	if 'mass' in kwargs:
+		return Otegi20RockyRadius(kwargs['mass'], kwargs.get('no_errors',False))
+	elif 'radius' in kwargs:
+		return Otegi20RockyMass(kwargs['radius'], kwargs.get('no_errors',False))
+	else:
+		raise KeyError("[Otegi20MR] Specify either 'mass' or 'radius'")
+
+
+def OtegiMassRadiusRelation(**kwargs) -> float:
+	"""LEGACY FUNCTION: mass-radius relation for rocky cores by Otegi+20"""
+	print("[OtegiMassRadiusRelation] Warning: deprecated function")
+	return Otegi20MR(**kwargs).nominal_value
 
 
 # Wrapper for EvapMass M-R relation
@@ -43,178 +66,17 @@ def OwenMassRadiusRelation(**kwargs):
 	if has_radius: return owen_mass(**kwargs)[0]
 
 
-def OtegiMassRadiusRelation(**kwargs):
-	"""
-	Computes mass or radius based on planet's mass following the mass-radius
-	relationships by Otegi et al. (2015).
-	https://ui.adsabs.harvard.edu/abs/2020A%26A...634A..43O/abstract
-
-	Parameters
-	----------
-	radius : float, optional*
-			Radius in Earth radii
-	mass : float, optional*
-			Mass in Earth masses. Only specify EITHER mass OR radius!!
-	mode : str, optional
-			Choose: "rocky", "volatile"
-
-	*Note: EITHER mass OR radius must be given.
-	
-	Returns
-	-------
-	mass/radius : float
-			Radius if input mass, Mass if input radius.
-	error : float
-			Error in mass or radius, if error provided
-
-	"""
-	has_mass = 'mass' in kwargs.keys()
-	has_radius = 'radius' in kwargs.keys()
-	if (has_mass and has_radius) or (not has_mass and not has_radius):
-		print(f" Error: specify either mass or radius")
-		return None
-	if has_mass: return otegi2020_radius(mass=kwargs['mass'])
-	return otegi2020_mass(radius=kwargs['radius'])
-
-
-def otegi2020_mass(radius, error=0.0, mode='rocky'):
-	otegi_models = [
-		dict(mode='rocky', const=1.03, c_err=0.02, pow=0.29, p_err=0.01),
-		dict(mode='volatile', const=0.7, c_err=0.11, pow=0.63, p_err=0.04)
-	]
-	if(mode not in ['rocky','volatile']):
-		print(f"Error: unknown mode '{mode}'. Setting to rocky.")
-		mode = 'rocky'
-	model = otegi_models[0] if mode=='rocky' else otegi_models[1]
-	mass = (radius/model['const'])**(1/model['pow'])
-	if error < 1e-3: return mass
-	
-	import uncertainties as uncert
-	R = uncert.ufloat(radius, error)
-	modelC = uncert.ufloat(model['const'], model['c_err'])
-	modelP = uncert.ufloat(model['pow'], model['p_err'])
-	mass = (R / modelC) ** (1 / modelP)
-	return mass.nominal_value, mass.std_dev
-
-
-def otegi2020_radius(mass, error=0.0, mode='rocky'):
-	otegi_models = [
-		dict(mode='rocky', const=1.03, c_err=0.02, pow=0.29, p_err=0.01),
-		dict(mode='volatile', const=0.7, c_err=0.11, pow=0.63, p_err=0.04)
-	]
-	if(mode not in ['rocky','volatile']):
-		print(f"Error: unknown mode '{mode}'. Setting to rocky.")
-		mode = 'rocky'
-	model = otegi_models[0] if mode=='rocky' else otegi_models[1]
-	radius = model['const'] * mass ** model['pow']
-	if error < 1e-3: return radius
-	
-	# Errors
-	"""
-	M = uncert.ufloat(mass, error)
-	modelC = uncert.ufloat(model['const'], model['c_err'])
-	modelP = uncert.ufloat(model['pow'], model['p_err'])
-	"""
-	const_term = model['c_err'] * mass ** model['pow']
-	mass_term =  model['const'] \
-				* model['pow'] \
-				* error \
-				* mass ** (model['pow']-1)
-	pow_term = model['const'] \
-				* mass ** model['pow'] \
-				* np.log(mass) \
-				* model['p_err']
-	radius_err = np.sqrt( (const_term)**2 + (mass_term)**2 + (pow_term)**2 )
-	return radius, radius_err
-
-
-
-def solve_structure(mass, radius, age, dist, lbol,
-					env_fn = ChenRogers16,
-					mr_fn = OtegiMassRadiusRelation,
-					fenv_start = 0.05):
-	"""
-	Solves for the structure of a planet given its observed mass and radius,
-	as well as orbital and stellar parameters.
-	Returns the planet parameters in a dict.
-
-	Parameters
-	----------
-		mass:	(float) -> Mass of the planet in Earth masses.
-		radius:	(float) -> Radius of the planet in Earth radii.
-		age:	(float) -> Radius of the planet in Earth radii.
-		dist:	(float) -> Semimajor-axis of the planet's orbit in AU.
-		lbol:	(float) -> Bolometric luminosity of the host star in erg/s.
-		env_fn:	(callable) -> Envelope structure formulation of signature:
-				Parameters: (float) -> mass, fenv, fbol, age, rcore, dist
-				Returns: 	(float) -> envelope_radius
-				By default, it uses Chen & Rogers (2016).
-		mr_fn:	(callable) -> Mass-radius relation for rocky cores of signature:
-				Keyword parameters: (float) -> rocky_mass
-				Returns: (float) -> rocky_radius 
-				By default, it uses Otegi et al. (2020).
-		fenv_start: (float) -> Initial guess for the envelope mass fraction.
-					By default, it is set to 0.05 (envelope_mass => 5% of planet_mass)
-
-	Returns
-	-------
-		(dict) -> Solved internal structure of the planet as dict keys in relevant units:
-			mass, radius, mcore, rcore, fenv, renv, age, dist, success.
-			`success` key is a boolean that specifies whether a solution was found.
-	"""
-
-	def solve_fn(fenv, mass, radius, age, dist, lbol):
-		"""
-		Returns the difference between the envelope radius calculated
-		by the mass-radius relation and the one from the envelope
-		structure formulation, given a mass fraction.
-		"""
-
-		# Calculate envelope radius from mass-radius relation
-		mcore = (1.0 - fenv) * mass
-		rcore = mr_fn(mass = mcore)
-		renv1 = radius - rcore
-
-		# Calculate envelope radius from envelope structure formulation
-		fbol = lbol / (4.0 * np.pi * (dist * units.au.to('cm'))**2)
-		renv2 = env_fn(mass=mass, fenv=fenv, fbol=fbol,
-						age=age, rcore=rcore, dist=dist)
-
-		return renv1 - renv2
-
-	# Root finder
-	fenv, info, sucess, msg = scipy_fsolve(
-		func = solve_fn,
-		x0 = fenv_start, full_output = True,
-		args = (mass, radius, age, dist, lbol)
-	)
-	fenv = float(fenv)
-
-	solved_planet = dict(
-		mass = mass, radius = radius,
-		fenv = fenv, age = age, dist = dist,
-		mcore = (1.0 - fenv) * mass,
-		success = True
-	)
-	solved_planet['rcore'] = mr_fn(mass=solved_planet['mcore'])
-	solved_planet['renv'] = radius - solved_planet['rcore']
-	solved_planet['menv'] = mass * fenv
-
-	if sucess != 1:
-		print("[solve_structure] Failed to find a solution for planet structure")
-		print(f"\t-> Mass = {mass}, radius = {radius}, dist = {dist}, age = {age}")
-		print(f"\t-> {msg}")
-		print(f"\t-> {info}")
-		solved_planet['success'] = False
-
-	return solved_planet
-
-
-def solve_structure_uncert(
-	mass, radius, age, dist, lbol,
-	env_fn = ChenRogers16,
-	mr_fn = OtegiMassRadiusRelation,
-	fenv_start = 0.05):
+def solve_structure(
+		mass 	:float,
+		radius 	:float,
+		age  	:float,
+		dist  	:float,
+		lbol  	:float,
+		env_fn 	:callable = ChenRogers16,
+		mr_fn 	:callable = Otegi20MR,
+		fenv_start :float = 0.05,
+		no_errors  :bool  = False
+		):
 	"""
 	Solves for the structure of a planet given its observed mass and radius,
 	as well as orbital and stellar parameters.
@@ -233,46 +95,65 @@ def solve_structure_uncert(
 				Returns: 	(float) -> envelope_radius
 				By default, it uses Chen & Rogers (2016).
 		mr_fn:	(callable) -> Mass-radius relation for rocky cores of signature:
-				Keyword parameters: (float) -> rocky_mass
-				Returns: (float) -> rocky_radius 
+				Keyword parameters: mass (float)
+				Returns: (ufloat) -> radius 
 				By default, it uses Otegi et al. (2020).
 		fenv_start: (float) -> Initial guess for the envelope mass fraction.
 					By default, it is set to 0.05 (envelope_mass => 5% of planet_mass)
+		no_errors:  (bool) -> If True, no uncertainties will be calculated for the final result
 
 	Returns
 	-------
 		(dict) -> Solved internal structure of the planet as dict keys in relevant units:
 			mass, radius, mcore, rcore, fenv, renv, age, dist, success.
-			`success` key is a boolean that specifies whether a solution was found.
+			The `success` key is a boolean that specifies whether a solution was found.
 	"""
+	solver_success = True # Determines whether solver converged to a solution
 
-	def wrapper(*args, **kwargs):
-		"""solve_structure but only returns envelope mass fraction"""
-		params = solve_structure(*args, **kwargs,
-			env_fn = env_fn, mr_fn = mr_fn, fenv_start = fenv_start
+	def diff_fn(fenv, mass, radius, age, dist, lbol):
+		"""Returns difference in envelope radii from M-R relation and structure model"""
+		# Calculate envelope radius from mass-radius relation
+		mcore = (1.0 - fenv) * mass
+		
+		rcore = mr_fn(mass = mcore)[0].nominal_value
+		renv1 = radius - rcore
+		# Calculate envelope radius from envelope structure formulation
+		fbol = flux(lbol, dist_au = dist)
+		renv2 = env_fn(
+			mass=mass, fenv=fenv, fbol=fbol,
+			age=age, rcore=rcore, dist=dist
 		)
-		if params['success'] is False:
-			print("""
-			[solve_structure_uncert] Failed to find a solution for planet structure).
-			Try running without uncertainties with `solve_structure`.
-			""")
-		return params['fenv']
-
-	# wrap functions to acept uncertainties
-	solver_uc = uncert.wrap(wrapper)
-	mr_uc = uncert.wrap(mr_fn)
+		# print("Diff: ", renv1 - renv2)
+		return renv1 - renv2
+	
+	def solver_fn(mass, radius, age, dist, lbol, fenv_start):
+		"""Solves for the envelope mass fraction without uncertainties"""
+		fenv, info, success, msg = scipy_fsolve(
+			func = diff_fn,
+			x0 = fenv_start, full_output = True,
+			args = (mass, radius, age, dist, lbol)
+		)
+		if success != 1:
+			print("[solve_structure] Failed to reach a solution") 
+			solver_success = False
+		return float(fenv)
+	
+	# wrap functions to accept or rule out uncertainties
+	solver = uwrap(solver_fn) if no_errors is False else solver_fn
+	mr     = mr_fn            if no_errors is False else lambda **kw: mr_fn(**kw).nominal_value
 
 	# Solve for envelope and recalculate planet parameters
-	fenv = solver_uc(mass, radius, age, dist, lbol)
+	fenv = solver(mass, radius, age, dist, lbol, fenv_start)
 	mcore = (1.0 - fenv) * mass
-	rcore = mr_uc(mass = mcore)
+	rcore = mr(mass = mcore)
 	renv = radius - rcore
 	
 	params = dict(
-		mass = mass, radius = radius,
-		age = age, dist = dist,
-		mcore = mcore, rcore = rcore,
-		fenv = fenv, renv = renv
+		mass  = mass,  radius = radius,
+		age   = age,   dist   = dist,
+		mcore = mcore, rcore  = rcore,
+		fenv  = fenv,  renv   = renv,
+		success = solver_success
 	)
 
 	return params

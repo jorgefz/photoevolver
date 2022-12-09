@@ -13,13 +13,10 @@ import astropy.units as U
 from .structure import fenv_solve
 from .owenwu17 import mass_to_radius as owen_radius
 from .owenwu17 import radius_to_mass as owen_mass
-from .planet import Planet, indexable, is_mors_star
+from .planet import Planet
+from .utils import indexable, is_mors_star
 from .tracks import Tracks
 from .core import globals
-
-# temporary
-from .planet import OtegiMassRadiusRelation
-
 
 
 def lum_to_flux_au(lum: float, dist: float):
@@ -58,8 +55,9 @@ class EvoState:
 		_fields = EvoState.fields
 		# enforce certain default members
 		for k in _fields:
-			if k in kwargs: self.__dict__[k] = kwargs[k]
-			else: self.__dict__[k] = None
+			self.__dict__[k] = kwargs.get(k, None)
+			# if k in kwargs: self.__dict__[k] = kwargs[k]
+			# else: self.__dict__[k] = None
 
 	def validate() -> bool:
 		"""
@@ -221,7 +219,7 @@ def update_tracks(tracks: Tracks, state: EvoState):
 	tracks['Fenv']  += [ state.fenv ]
 	tracks['Dens']  += [ planet_density(mp = state.mp, rp = state.rp) ]
 	tracks['Mloss'] += [ state.mloss ]
-	tracks['Teq']   += [ equilibrium_temperature(state.fx) ]
+	tracks['Teq']   += [ equilibrium_temperature(state.fbol) ]
 
 
 def reverse_tracks(tracks: Tracks):
@@ -368,11 +366,14 @@ def evolve(
 		np.seterr(all="raise")
 		warnings.filterwarnings("error")
 
-	assert isinstance(planet, Planet), "Planet must be an instance of ph.Planet"
+	# assert isinstance(planet, Planet), "Planet must be an instance of ph.Planet"
 	assert callable(struct), "Structure formulation must be a function"
 	assert (mode in ['future','past']), "Simulation mode must be 'future' or 'past'"
 	assert mloss is None or callable(mloss), "Mass loss formulation must be a function"
-	if mloss is None and globals.verbose: print("Mass loss is turned off")
+	if mloss is None:
+		mloss = lambda *a,**kw: 0.0
+		if globals.verbose:
+			print(" [INFO] Mass loss is turned off")
 
 	state = EvoState()
 	tracks = new_tracks(planet)
@@ -390,7 +391,7 @@ def evolve(
 	age_lims = [10,5000] if mode == 'future' else [5000,10]
 	state.start = state.age if state.age is not None else age_lims[0]
 	state.end = kwargs.get("end", age_lims[1])
-	state.fenv_limits = kwargs.get("fenv_limits", [1e-4, 0.10]) # lower, upper
+	state.fenv_limits = kwargs.get("fenv_limits", [1e-4, 1.0]) # lower, upper
 	ages = kwargs.get(
 		"ages",
 		generate_ages(state.start, state.end, state.tstep)

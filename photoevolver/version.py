@@ -1,4 +1,4 @@
-__version__ = "1.6.3"
+__version__ = "1.6.4"
 __author__ = "Jorge Fernandez"
 
 """
@@ -21,7 +21,10 @@ Version 1.6.4
     - Changed behaviour of `solve_structure` when solution could not be found.
         Now it returns the solution status as a boolean `success` as part of the return dict.
     - Updated function docs and readme.
-    - Added Kubyshkina & Fossati (2021) grid and interpolator `ph.massloss.K18Interpolator`
+    - Added Kubyshkina & Fossati (2021) grid and interpolator `ph.massloss.K18Interpolator`.
+    - Added utils, plotter, and StarTable.
+    - Changed Otegi 2020 mass-radius relations to work with the uncertainties package.
+    - Added structure formulation for planets with water/icy cores `ChenRogers16Water`.
 
 Version 1.6.3
     - Solved bug where ph.Tracks.load was missing the class argument required as a classmethod.

@@ -17,6 +17,7 @@ import numpy as np
 ## Added by Jorge for relative paths
 import os
 PyDir = os.path.dirname(os.path.realpath(__file__)) + '/'
+__teq_sma_dataset = np.loadtxt(PyDir+'teq-sma.txt');
 
 
 ## astronomical constants        
@@ -34,7 +35,9 @@ def SMAXIS(Mss,Teq):
 #OUTPUT: d0 [au]
 #This function returns the orbital separation for the specific stellar mass and equilibrium temperature, as defined in the grid.
 #The value of the orbital separation is the averaged value according to stellar models at different ages (based on MIST stellar isochrone models by Choi et al., 2016; ApJ, 823, 102).
-    mstd = np.loadtxt(PyDir+'teq-sma.txt');
+    # mstd = np.loadtxt(PyDir+'teq-sma.txt');
+    global __teq_sma_dataset
+    mstd = __teq_sma_dataset
     mss00 = mstd[:,0];
     teq00 = mstd[:,1];
     d00 = mstd[:,2];

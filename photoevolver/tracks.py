@@ -6,7 +6,8 @@ from copy import deepcopy
 from scipy.interpolate import interp1d
 from typing import Any, Union, List, Callable
 
-from .planet import Planet, indexable
+from .utils import indexable
+from .planet import Planet
 
 import functools
 

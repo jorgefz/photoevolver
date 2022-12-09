@@ -4,13 +4,21 @@ import os
 import platform
 
 from photoevolver import planet, tracks, evo, core, massloss, structure, owenwu17
+from photoevolver.planet import Planet, Otegi20MR
+from photoevolver.evo import evolve, evolve_back, evolve_forward, Tracks
+from photoevolver.core import globals
+from photoevolver import plotter
+from photoevolver.startable import StarTable
 from photoevolver.libcfn import libcfn
+from photoevolver import utils
+
+
+# TEMPORARY - DEBUG
+from photoevolver.K18grid import interpolator as K18grid
 
 # legacy
 from photoevolver.libcfn import libcfn as libc
 
-from photoevolver.evo import Planet, evolve, evolve_back, evolve_forward, Tracks, OtegiMassRadiusRelation
-from photoevolver.core import globals
 # import photoevolver.old
 
 py_dir = os.path.dirname(os.path.realpath(__file__))

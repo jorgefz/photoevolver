@@ -57,7 +57,7 @@ def LumToFlux(lum : Union[float,units.Quantity],
 		lum *= units.erg / units.s
 	if not isinstance(dist, units.Quantity):
 		dist *= units.au
-	return lum / (4.0 * np.pi * dist**2)
+	return lum / (4.0 * np.pi * (dist)**2)
 
 
 ###########################
@@ -89,9 +89,11 @@ def K18Interpolator(*args, **kwargs):
 	_DisablePrint()
 	mloss = interpolator.INTERPOL(Mstar, Feuv, Teq, Rp, Mp)
 	_EnablePrint()
-
+	
 	gs_to_MeMyr = (units.g / units.s).to("M_earth/Myr")
-	return float(mloss) * gs_to_MeMyr
+	# print(f"{Leuv=}, {Feuv=}, {mloss=:.3e}")
+	mloss = float(mloss) * gs_to_MeMyr
+	return mloss 
 
 
 

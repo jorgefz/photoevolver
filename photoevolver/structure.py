@@ -87,6 +87,7 @@ def ChenRogers16(**kwargs):
         fenv: Envelope mass fraction (Menv / Mplanet)
         fbol: stellar bolometric flux at planet distance (erg/s/cm^2)
         age: in Myr
+        cr16_coeff: (dict) coefficients dict(c0, c1, c2) for the equation
 
     Optional keywords:
         safe: checks if the input parameters are within safe model bounds
@@ -106,7 +107,8 @@ def ChenRogers16(**kwargs):
             "age":  [100.0, 10000.0]
     }
     if 'safe' in kwargs and kwargs['safe'] is True: _bound_check(bounds, kwargs)
-    # --
+    
+    # Coefficients
     c0 = 0.131
     c1 = [-0.348, 0.631,  0.104, -0.179]
     c2 = [
@@ -115,6 +117,10 @@ def ChenRogers16(**kwargs):
         [ None,   None,   0.052,  0.031],
         [ None,   None,   None,  -0.009]
     ]
+    if "cr16_coeff" in kwargs:
+        coeff = kwargs['cr16_coeff']
+        c0, c1, c2 = coeff['c0'], coeff['c1'], coeff['c2']
+
     # --
     terms = [ \
         np.log10( kwargs['mass'] ),
@@ -136,6 +142,18 @@ def ChenRogers16(**kwargs):
         log_renv += subterm
     return 10**(log_renv)
 
+
+def ChenRogers16Water(**kwargs):
+    """Structure model by Chen & Rogers (2016) with coefficients for ice-rocky cores"""
+    c0 = 0.169
+    c1 = [-0.436, 0.572,  0.154, -0.173]
+    c2 = [
+        [ 0.246,  0.014, -0.210,  0.006],
+        [ None,   0.074, -0.048, -0.040],
+        [ None,   None,   0.059,  0.031],
+        [ None,   None,   None,  -0.006]
+    ]
+    return ChenRogers16(**kwargs, c16_coeff = dict(c0=c0, c1=c1, c2=c2))
 
 
 def OwenWu17(**kwargs):
