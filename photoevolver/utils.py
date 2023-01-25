@@ -58,7 +58,7 @@ def luminosity(flux :float, dist_au :float = np.nan, dist_pc :float = np.nan):
     if(~np.isnan(dist_au)):
         dist = dist_au * units.au.to("cm")
     elif(~np.isnan(dist_pc)):
-        dist = dist_pc = units.pc.to("cm")
+        dist = dist_pc * units.pc.to("cm")
     else:
         dist = np.nan
     return flux * 4.0 * np.pi * (dist)**2
@@ -73,10 +73,10 @@ def flux(
     if(~np.isnan(dist_au)):
         dist = dist_au * units.au.to("cm")
     elif(~np.isnan(dist_pc)):
-        dist = dist_pc = units.pc.to("cm")
+        dist = dist_pc * units.pc.to("cm")
     else:
         dist = np.nan
-    return luminosity / (4.0 * np.pi * dist**2)
+    return luminosity / (4.0 * np.pi * (dist)**2)
 
 @np.vectorize
 def equilibrium_temperature(fbol: float) -> float:

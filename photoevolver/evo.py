@@ -396,6 +396,7 @@ def evolve(
 		"ages",
 		generate_ages(state.start, state.end, state.tstep)
 	)
+
 	# NaN callback function gets called when NaNcomes up in sim.
 	state.nan_callback = kwargs.get(
 		"nan_callback",
@@ -446,8 +447,9 @@ def evolve(
 			pass
 
 		# [3] Update envelope
+		state.tstep = ages[i+1] - ages[i]
 		state.menv += state.mloss_factor * state.mloss * state.tstep
-
+		
 		if state.menv <= state.mp * state.fenv_limits[0]: # no envelope
 			state.menv = 0.0
 			state.fenv = 0.0
