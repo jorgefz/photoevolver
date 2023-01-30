@@ -3,7 +3,7 @@
 
 # Global parameters
 
-class globals:
+class settings:
 	"""
 	verbose: bool				Prints simulation state on each time step
 	warnings_as_errors: bool	Any warning raised will stop the simulation.

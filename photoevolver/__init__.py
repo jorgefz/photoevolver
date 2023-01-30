@@ -6,12 +6,13 @@ import platform
 from photoevolver import planet, tracks, evo, core, massloss, structure, owenwu17
 from photoevolver.planet import Planet, Otegi20MR
 from photoevolver.evo import evolve, evolve_back, evolve_forward, Tracks
-from photoevolver.core import globals
+from photoevolver.core import settings
 from photoevolver import plotter
 from photoevolver.startable import StarTable
 from photoevolver.libcfn import libcfn
 from photoevolver import utils
 
+from photoevolver import dev
 
 # TEMPORARY - DEBUG
 from photoevolver.K18grid import interpolator as K18grid

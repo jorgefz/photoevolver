@@ -16,7 +16,7 @@ from .owenwu17 import radius_to_mass as owen_mass
 from .planet import Planet
 from .utils import indexable, is_mors_star
 from .tracks import Tracks
-from .core import globals
+from .core import settings
 
 
 def lum_to_flux_au(lum: float, dist: float):
@@ -268,7 +268,7 @@ def nan_callback(state: EvoState, origin: callable, target: str, **kws):
 	This function is called when a NaN is generated in the simulation,
 	most probably by the structure or the mass loss formulation.
 	"""
-	if globals.verbose or globals.warnings_as_errors:
+	if settings.verbose or settings.warnings_as_errors:
 		warnings.warn(f"Function '{origin.__name__}' returned NaN\n{state}")
 	
 	if state.nan_callback(state, origin, target) is False:
@@ -362,7 +362,7 @@ def evolve(
 	"""
 
 	# interpret any warning as an error
-	if globals.warnings_as_errors is True:
+	if settings.warnings_as_errors is True:
 		np.seterr(all="raise")
 		warnings.filterwarnings("error")
 
@@ -372,7 +372,7 @@ def evolve(
 	assert mloss is None or callable(mloss), "Mass loss formulation must be a function"
 	if mloss is None:
 		mloss = lambda *a,**kw: 0.0
-		if globals.verbose:
+		if settings.verbose:
 			print(" [INFO] Mass loss is turned off")
 
 	state = EvoState()
@@ -420,7 +420,7 @@ def evolve(
 	# Save zero-age state
 	state.update_fluxes(star['lx'][0], star['leuv'][0], star['lbol'][0])
 	update_tracks(tracks, state)
-	if globals.verbose: print(state)
+	if settings.verbose: print(state)
 
 	# Main evolution loop
 	for i,a in zip( range(1,len(ages)-1), ages[1:]):
@@ -465,7 +465,7 @@ def evolve(
 			state.rp = state.radius = state.renv + state.rcore
 
 		update_tracks(tracks, state)
-		if globals.verbose: print(state)
+		if settings.verbose: print(state)
 
 	if mode == 'past': tracks = reverse_tracks(tracks)
 	tracks.interpolate()
@@ -619,8 +619,8 @@ def evolve_forward(planet, mloss, struct, star, time_step=1.0, age_end=1e4,\
 		parameters evolves in the time range given.
 
 	"""
-	if globals.warnings_as_errors is True:
-		globals.verbose = True
+	if settings.warnings_as_errors is True:
+		settings.verbose = True
 		warnings.filterwarnings("error")
 
 	pl = deepcopy(planet)
@@ -676,7 +676,7 @@ def evolve_forward(planet, mloss, struct, star, time_step=1.0, age_end=1e4,\
 		if mloss is not None and pl.fenv > kwargs['fenv_min']:
 			mloss_rate = mloss(**params)
 			if np.isnan(mloss_rate):
-				if globals.verbose: warnings.warn(f"Mass loss '{mloss.__name__}' model returned nan, params are: {params}")
+				if settings.verbose: warnings.warn(f"Mass loss '{mloss.__name__}' model returned nan, params are: {params}")
 				mloss_rate = 0.0
 			pl.menv -= mloss_rate * tstep
 			pl.mp = pl.mcore + pl.menv 
@@ -689,7 +689,7 @@ def evolve_forward(planet, mloss, struct, star, time_step=1.0, age_end=1e4,\
 		if pl.renv > kwargs['renv_min']:
 			pl.renv = struct(**params)
 			if np.isnan(pl.renv):
-				if globals.verbose: warnings.warn(f"Warning: structure model '{struct.__name__}' returned nan, params are: {params}")
+				if settings.verbose: warnings.warn(f"Warning: structure model '{struct.__name__}' returned nan, params are: {params}")
 				pl.renv = pl.rp - pl.rcore
 			if pl.renv <= kwargs['renv_min']: pl.renv = 0.0
 			pl.rp = pl.rcore + pl.renv
@@ -771,8 +771,8 @@ def evolve_back(planet, mloss, struct, star, time_step=1.0, age_end=1.0, ages = 
 
 	"""
 	# input parameters check
-	if globals.warnings_as_errors is True:
-		globals.verbose = True
+	if settings.warnings_as_errors is True:
+		settings.verbose = True
 		warnings.filterwarnings("error")
 
 	pl = deepcopy(planet)
@@ -827,7 +827,7 @@ def evolve_back(planet, mloss, struct, star, time_step=1.0, age_end=1.0, ages = 
 		if mloss is not None:
 			mloss_rate = mloss(**params)
 			if np.isnan(mloss_rate):
-				if globals.verbose: warnings.warn(f"Warning: mass model '{mloss.__name__}' returned nan, params are: {params}")
+				if settings.verbose: warnings.warn(f"Warning: mass model '{mloss.__name__}' returned nan, params are: {params}")
 				mloss_rate = 0.0
 			pl.menv += mloss_rate * tstep
 			pl.mp = pl.mcore + pl.menv 
@@ -836,7 +836,7 @@ def evolve_back(planet, mloss, struct, star, time_step=1.0, age_end=1.0, ages = 
 
 		pl.renv = struct(**params)
 		if np.isnan(pl.renv):
-			if globals.verbose: warnings.warn(f"Warning: structure model '{struct.__name__}' returned nan, params are: {params}")
+			if settings.verbose: warnings.warn(f"Warning: structure model '{struct.__name__}' returned nan, params are: {params}")
 			pl.renv = pl.rp - pl.rcore
 		pl.rp = pl.rcore + pl.renv
 		tracks = _update_tracks(tracks, pl, star, i, mloss = mloss_rate)
