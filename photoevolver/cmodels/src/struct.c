@@ -2,15 +2,40 @@
 #include <stdlib.h>
 #include <math.h>
 
+#include <Python.h>
 #include "constants.h"
+#include "models.h"
 
-/*
- * Turn enhanced opacity to varargs
- * so all structure formulations have signature
- *      double function(double mass, double fenv, double fbol, double age, ...)
- */
+const char docs_envelope_lopez14[] = 
+    "Returns the envelope thickness in Earth radii using the model\n"
+    "by Lopez & Fortney (2014).\n"
+    "\n"
+    "Parameters\n"
+    "----------\n"
+    "mass   : float, planet mass in Earth masses\n"
+    "fenv   : float, envelope mass fraction = (mass-mcore)/mcore\n"
+    "fbol   : float, bolometric flux on the planet (erg/s/cm^2)\n"
+    "age    : float, system age in Myr\n"
+    "opaque : bool (optional), enables enhanced opacity\n"
+    "\n"
+    "Returns\n"
+    "-------\n"
+    "renv   : float, envelope thickness in Earth radii\n"
+;
+PyObject* envelope_lopez14(PyObject* self, PyObject* args, PyObject* kwargs){
+    // Arguments
+    double mass, fenv, fbol, age;
+    int enhanced_opacity = 1; // optional
+    // Keyword arguments
+    static char* kwlist[] = {"mass", "fenv", "fbol", "age", "opaque", NULL};
+    // Pars args
+    if(!PyArg_ParseTupleAndKeywords(args, kwargs, "dddd|p", kwlist,
+        &mass, &fenv, &fbol, &age, &enhanced_opacity)
+    ){
+        PyErr_SetString(PyExc_ValueError, "Invalid argument");
+        return NULL;
+    }
 
-double LopezFortney14Structure(double mass, double fenv, double fbol, double age, int enhanced_opacity){
     double age_pow, mass_term, flux_term, age_term, fenv_term;
     if (enhanced_opacity == 0) age_pow = -0.11; // solar metallicity
     else age_pow = -0.18; // enhanced opacity
@@ -19,26 +44,40 @@ double LopezFortney14Structure(double mass, double fenv, double fbol, double age
     flux_term = pow( fbol * FX2SI / FBOLEARTH, 0.044 );
     age_term = pow( age / 5000.0, age_pow );
     fenv_term = pow(fenv / 0.05, 0.59);
- 
-    return mass_term * fenv_term * flux_term * age_term;
+    
+    double result = mass_term * fenv_term * flux_term * age_term;
+    return PyFloat_FromDouble(result);
 }
 
 
-/*
-ChenRogers16Structure
-    Calculates the envelope radius of a planet based on the MESA model by Chen & Rogers (2016)
-    
-    Input:
-        mass: M_earth
-        fenv: Envelope mass fraction (Menv / Mplanet)
-        fbol: stellar bolometric flux at planet distance (erg/s/cm^2)
-        age: in Myr
+const char docs_envelope_chen16[] = 
+    "Returns the envelope thickness in Earth radii using the model\n"
+    "by Chen & Rogers (2016).\n"
+    "\n"
+    "Parameters\n"
+    "----------\n"
+    "mass   : float, planet mass in Earth masses\n"
+    "fenv   : float, envelope mass fraction = (mass-mcore)/mcore\n"
+    "fbol   : float, bolometric flux on the planet (erg/s/cm^2)\n"
+    "age    : float, system age in Myr\n"
+    "\n"
+    "Returns\n"
+    "-------\n"
+    "renv   : float, envelope thickness in Earth radii\n"
+;
+PyObject* envelope_chen16(PyObject* self, PyObject* args, PyObject* kwargs){
+    // Arguments
+    double mass, fenv, fbol, age;
+    // Keyword arguments
+    static char* kwlist[] = {"mass", "fenv", "fbol", "age", NULL};
+    // Pars args
+    if(!PyArg_ParseTupleAndKeywords(args, kwargs, "dddd", kwlist,
+        &mass, &fenv, &fbol, &age)
+    ){
+        PyErr_SetString(PyExc_ValueError, "Invalid argument");
+        return NULL;
+    }
 
-    Output:
-        Envelope radius in Earth radii
-*/
-
-double ChenRogers16Structure(double mass, double fenv, double fbol, double age){
     double c0 = 0.131;
     double c1[4] = {-0.348, 0.631, 0.104, -0.179};
     double c2[4][4] = {
@@ -66,7 +105,9 @@ double ChenRogers16Structure(double mass, double fenv, double fbol, double age){
             lg_renv += c2[i][j] * terms[i] * terms[j];
         }
     }
-    return pow(10.0, lg_renv);
+    double result = pow(10.0, lg_renv);
+
+    return PyFloat_FromDouble(result);
 }
 
 
@@ -161,8 +202,6 @@ static OW17Params ow17params = {
 };
 
 
-
-
 static double integrand1(double x, void* args){
     (void)args;
     return x * pow( 1.0/x-1.0, 1.0/(ow17params.gamma-1.0) );
@@ -241,7 +280,7 @@ static double xenv_derivative_wrapper(double renv, void* args){
     return deriv;
 }
 
-double rho_photosphere(double renv, double rcore, double mcore, double Teq){
+static double rho_photosphere(double renv, double rcore, double mcore, double Teq){
     double numerator, denominator, power, pressure_phot, rho_phot;
     numerator = 2.0/3.0 * G_CGS * mcore * MEARTH * 1000.0;
     denominator = pow(renv + rcore, 2.0) * ow17params.kappa0 * pow(Teq, ow17params.beta);
@@ -250,7 +289,6 @@ double rho_photosphere(double renv, double rcore, double mcore, double Teq){
     rho_phot = (ow17params.mu / KBOLTZ_CGS) * pressure_phot / Teq;
     return rho_phot;
 }
-
 
 double OwenWu17Structure(double mass, double fenv, double fbol, double age, double rcore){
 
