@@ -28,11 +28,10 @@ PyObject* envelope_lopez14(PyObject* self, PyObject* args, PyObject* kwargs){
     int enhanced_opacity = 1; // optional
     // Keyword arguments
     static char* kwlist[] = {"mass", "fenv", "fbol", "age", "opaque", NULL};
-    // Pars args
+    // Parse args
     if(!PyArg_ParseTupleAndKeywords(args, kwargs, "dddd|p", kwlist,
         &mass, &fenv, &fbol, &age, &enhanced_opacity)
     ){
-        PyErr_SetString(PyExc_ValueError, "Invalid argument");
         return NULL;
     }
 
@@ -70,11 +69,10 @@ PyObject* envelope_chen16(PyObject* self, PyObject* args, PyObject* kwargs){
     double mass, fenv, fbol, age;
     // Keyword arguments
     static char* kwlist[] = {"mass", "fenv", "fbol", "age", NULL};
-    // Pars args
+    // Parse args
     if(!PyArg_ParseTupleAndKeywords(args, kwargs, "dddd", kwlist,
         &mass, &fenv, &fbol, &age)
     ){
-        PyErr_SetString(PyExc_ValueError, "Invalid argument");
         return NULL;
     }
 
@@ -113,7 +111,7 @@ PyObject* envelope_chen16(PyObject* self, PyObject* args, PyObject* kwargs){
 
 
 /*
-=================== General Functions =======================
+===== Functions for solving Owen & Wu (2017) envelope model =====
 */
 
 /*
@@ -135,7 +133,6 @@ static double newton_solve(double (*func)(double,void*), double (*deriv)(double,
     }
     return xn;
 }
-
 
 /*
 Finds the deriative of a function evaluated at x,
@@ -187,7 +184,6 @@ static double simpson_integral(double (*f)(double,void*), double a, double b, un
 
 #define INTEGRAL_ITERS 25
 #define FSOLVE_ITERS 10
-
 
 typedef struct params{
     double alpha, beta, gamma, kappa0, mu; 
@@ -290,7 +286,35 @@ static double rho_photosphere(double renv, double rcore, double mcore, double Te
     return rho_phot;
 }
 
-double OwenWu17Structure(double mass, double fenv, double fbol, double age, double rcore){
+const char docs_envelope_owen17[] = 
+    "Returns the envelope thickness in Earth radii using the model\n"
+    "by Owen & Wu (2017).\n"
+    "\n"
+    "Parameters\n"
+    "----------\n"
+    "mass   : float, planet mass in Earth masses\n"
+    "fenv   : float, envelope mass fraction = (mass-mcore)/mcore\n"
+    "fbol   : float, bolometric flux on the planet (erg/s/cm^2)\n"
+    "age    : float, system age in Myr\n"
+    "rcore  : float, core radius in Earth radii\n"
+    "\n"
+    "Returns\n"
+    "-------\n"
+    "renv   : float, envelope thickness in Earth radii\n"
+;
+
+PyObject* envelope_owen17(PyObject* self, PyObject* args, PyObject* kwargs){
+
+    // Arguments
+    double mass, fenv, fbol, age, rcore;
+    // Keyword arguments
+    static char* kwlist[] = {"mass", "fenv", "fbol", "age", "rcore", NULL};
+    // Parse args
+    if(!PyArg_ParseTupleAndKeywords(args, kwargs, "ddddd", kwlist,
+        &mass, &fenv, &fbol, &age, &rcore)
+    ){
+        return NULL;
+    }
 
     double xenv, mcore, Teq, Tkh;
     mcore = mass * ( 1.0 - fenv );
@@ -300,10 +324,10 @@ double OwenWu17Structure(double mass, double fenv, double fbol, double age, doub
     rcore *= REARTH * 100.0; // core radius in cm
 
     double renv_guess = 2.0 * rcore * pow(xenv/0.027, 1.0/1.31) * pow(mcore/5.0, -0.17);
-    
-    double args[] = {rcore, mcore, xenv, Tkh, Teq};
-    unsigned int n = FSOLVE_ITERS; // iterations
-    double renv_sol = newton_solve(xenv_wrapper, xenv_derivative_wrapper, renv_guess, n, (void*)args);
+    double solver_args[] = {rcore, mcore, xenv, Tkh, Teq};
+    unsigned int n_iter = FSOLVE_ITERS; // iterations
+    double renv_sol = newton_solve(xenv_wrapper, xenv_derivative_wrapper,
+        renv_guess, n_iter, (void*)solver_args);
     
     //return renv_sol/100.0/REARTH;
 
@@ -315,8 +339,9 @@ double OwenWu17Structure(double mass, double fenv, double fbol, double age, doub
     Hscale = KBOLTZ_CGS * Teq * pow(Rrcb, 2.0) / (ow17params.mu * G_CGS * mcore * MEARTH * 1000.0);
     Ffactor = 1.0 + (Hscale / Rrcb) * log(rho_rcb / rho_phot);
     Rplanet = Ffactor * Rrcb;
+    double result = (Rplanet - rcore) / REARTH / 100.0;
 
-    return (Rplanet - rcore) / REARTH / 100.0;
+    return PyFloat_FromDouble(result);
 }
 
 

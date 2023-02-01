@@ -61,22 +61,51 @@ double EffSalz16(double mass, double radius){
  * Returns:
  *      double mloss: mass loss rate in grams/s
  */
-double EnergyLimitedMassloss(
-        double fxuv, double radius, double mass,
-        double mstar, double a, double beta, double eff
+ const char docs_massloss_energy_limited[] = 
+    "Returns the mass loss rate in g/s using the energy-limited model.\n"
+    "\n"
+    "Parameters\n"
+    "----------\n"
+    "fxuv   : float, XUV flux on the planet in erg/s/cm^2\n"
+    "radius : float, planet radius in Earth radii\n"
+    "mass   : float, planet mass in Earth masses\n"
+    "mstar  : float, host star mass in solar masses\n"
+    "sep    : float, orbital distance in AU\n"
+    "rxuv   : float (optional), ratio of XUV to optical absorption radii\n"
+    "eff    : float (optional), efficiency (default is 0.15)\n"
+    "\n"
+    "Returns\n"
+    "-------\n"
+    "mloss   : float, mass loss rate in grams/s\n"
+;
+PyObject* massloss_energy_limited(PyObject* self, PyObject* args, PyObject* kwargs){
+    // Arguments
+    double fxuv, radius, mass, mstar, sep;
+    // Optional arguments
+    double rxuv = 1.0, eff = 0.15;
+    
+    // Keyword arguments
+    static char* kwlist[] = {"fxuv", "radius", "mass", "mstar", "sep",
+        "rxuv", "eff", NULL};
+    // Parse args
+    if(!PyArg_ParseTupleAndKeywords(args, kwargs, "ddddd|dd", kwlist,
+        &fxuv, &radius, &mass, &mstar, &sep, &rxuv, &eff)
     ){
+        return NULL;
+    }
+    
     double xi, ktide, mloss;
     // unit conversions
     fxuv *= FX2SI;
     radius *= REARTH;
     mass *= MEARTH;
     mstar *= MSUN;
-    a *= AU2M;
+    sep *= AU2M;
     // equation
-    xi = (a / radius) * pow( mass/mstar/3.0, 1.0/3.0 );
+    xi = (sep / radius) * pow( mass/mstar/3.0, 1.0/3.0 );
     ktide = 1.0 - 3.0/(2.0*xi) + 1.0/(2.0*pow(xi,3.0));
-    mloss = beta*beta * eff * M_PI * fxuv * pow(radius,3.0) / (G * ktide * mass);
-    return mloss * 1e3; // convert kg/s to gram/s
+    mloss = rxuv*rxuv * eff * M_PI * fxuv * pow(radius,3.0) / (G * ktide * mass);
+    return PyFloat_FromDouble(mloss * 1e3); // convert kg/s to gram/s
 }
 
 static double K18Epsilon(double radius, double fxuv, double a){
@@ -86,7 +115,35 @@ static double K18Epsilon(double radius, double fxuv, double a){
     return numerator / denominator;
 }
 
-double Kubyshkina18Massloss(double fxuv, double fbol, double mass, double radius, double a){
+ const char docs_massloss_kubyshkina18[] = 
+    "Returns the mass loss rate in g/s using the model by.\n"
+    "Kubyshkina et al. (2018)\n"
+    "\n"
+    "Parameters\n"
+    "----------\n"
+    "fxuv   : float, XUV flux on the planet in erg/s/cm^2\n"
+    "fbol   : float, bolometric flux on the planet in erg/s/cm^2\n"
+    "radius : float, planet radius in Earth radii\n"
+    "mass   : float, planet mass in Earth masses\n"
+    "sep    : float, orbital distance in AU\n"
+    "\n"
+    "Returns\n"
+    "-------\n"
+    "mloss   : float, mass loss rate in grams/s\n"
+;
+PyObject* massloss_kubyshkina18(PyObject* self, PyObject* args, PyObject* kwargs){
+    // Arguments
+    double fxuv, fbol, mass, radius, sep;
+
+    // Keyword arguments
+    static char* kwlist[] = {"fxuv", "fbol", "mass", "radius", "sep", NULL};
+    // Parse args
+    if(!PyArg_ParseTupleAndKeywords(args, kwargs, "ddddd", kwlist,
+        &fxuv, &fbol, &mass, &radius, &sep)
+    ){
+        return NULL;
+    }
+
     double alpha[3], beta, theta, zeta;
     double Teq, mH, Jeans, eps;
     double kappa, mloss;
@@ -98,7 +155,7 @@ double Kubyshkina18Massloss(double fxuv, double fbol, double mass, double radius
     Teq = pow( FX2SI * fbol / (4*SIGMASB), 1.0/4.0);
     mH = HMASS;
     Jeans = G * mass * MEARTH * mH / (KBOLTZ * Teq * radius * REARTH);
-    eps = exp( K18Epsilon(radius, fxuv, a) );
+    eps = exp( K18Epsilon(radius, fxuv, sep) );
     
     if (Jeans > eps){
         alpha[0] = 1.0; alpha[1] = -3.2861; alpha[2] = 2.75;
@@ -112,9 +169,9 @@ double Kubyshkina18Massloss(double fxuv, double fbol, double mass, double radius
         theta = 0.0095;
     }
     
-    kappa = zeta + theta * log(a); 
-    mloss = exp(beta) * pow(fxuv,alpha[0]) * pow(a,alpha[1]) * pow(radius,alpha[2]) * pow(Jeans,kappa);
-    return mloss;
+    kappa = zeta + theta * log(sep); 
+    mloss = exp(beta) * pow(fxuv,alpha[0]) * pow(sep,alpha[1]) * pow(radius,alpha[2]) * pow(Jeans,kappa);
+    return PyFloat_FromDouble(mloss);
 }
 
 
