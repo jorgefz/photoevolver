@@ -11,48 +11,117 @@ from scipy.optimize import (
     least_squares as scipy_leastsq,
     fsolve as scipy_fsolve
 )
-from scipy.integrate import RK45 as scipy_RK45
+import tqdm
+
+from .integrator import *
 
 def _is_mors_star(obj: typing.Any) -> bool:
-    """Checks both if the Mors module is available and if
-    the given object is an instance of Mors.Star"""
+    """Checks if an object is an instance of 'Star' from the Mors module.
+    Additionally, it returns False if it fails to import Mors.
+    
+    Parameters
+    ----------
+    obj : Mors.Star | Any
+        Object to check.
+
+    Returns
+    -------
+    bool : bool
+        Whether the object is an instance of 'Mors.Star'
+
+    """
     try:
         import Mors
     except ImportError:
         return False
     return isinstance(obj, Mors.Star)
 
+
 def get_flux(
-        luminosity :float,
-        dist_au     :float = None,
-        dist_pc     :float = None
+        lum     :float,
+        dist_au :float = None,
+        dist_pc :float = None
     ) -> float:
-    """
-    Calculates flux (erg/cm^2/s) from luminosity (erg/s)
-    using distance in either AU (dist_au) or parsecs (dist_pc)
+    """Calculates the flux that would be observed from a distance
+    in either AU (`dist_au`) or parsecs (`dist_pc`)
+    given the luminosity of the source.
+    If both distances are specified, the one in AU takes precedence.
+    
+    Parameters
+    ----------
+    lum     : float
+        Luminosity of the source in units of erg/s.
+    dist_au : float, optional
+        Distance to the source in units of AU.
+    dist_pc : float, optional
+        Distance to the source in units of parsecs.
+
+    Returns
+    -------
+    flux    : float
+        Corresponding flux in units of erg/s/cm^2.
+
+    Raises
+    ------
+    ValueError
+        If neither the distance in AU or parsecs is provided.
+
     """
     eqn = lambda lum,dist: lum/(4.0*np.pi*(dist)**2)
-    if dist_au: return eqn(luminosity, dist_au*units.au.to('cm'))
-    if dist_pc: return eqn(luminosity, dist_pc*units.pc.to('cm'))
-    return None
+    if dist_au: return eqn(lum, dist_au*units.au.to('cm'))
+    if dist_pc: return eqn(lum, dist_pc*units.pc.to('cm'))
+    raise ValueError(
+        "Specify distance in either AU (`dist_au`) or parsecs (`dist_pc`)")
+
 
 def keplers_third_law(
-        central_mass :float,
-        period       :float = None,
-        sep          :float = None) -> float:
+        big_mass   :float,
+        small_mass :float = 0.0,
+        period     :float = None,
+        sep        :float = None
+    ) -> float:
+    """Application of Kepler's third law.
+    For a system of two bodies orbiting each other, it returns either
+    the orbital period (if separation specified), or orbital separation
+    (if period specified) of their common orbit.
+    The mass of the two bodies can be specified, but only the
+    mass of the larger one is required, which is an acceptable approximation
+    when the difference in mass is large.
+    If both period and separation are specified, the period takes precedence.
+
+    Parameters
+    ----------
+    big_mass    : float
+        Mass of the more massive body in units of solar masses.
+    small_mass  : float, optional
+        Mass of the lighter body in units of Earth masses (different unit!)
+    period      : float, optional
+        Orbital period in units of days.
+    sep         : float, optional
+        Orbital separation in AU
+
+    Returns
+    -------
+    period_or_sep : float
+        Period if separation specified, or separation if period specified.
+
+    Raises
+    ------
+    ValueError
+        If neither period or separation are defined.
+
     """
-    Calculates the orbital period in days from the separation in AU
-    and viceversa, and requires the central body's mass in solar masses
-    """
-    const = constants.G*(central_mass*units.M_sun)/(4.0*np.pi**2)
-    if period: return np.cbrt(const *(period*units.day)**2).to("AU").value
+    total_mass = big_mass * units.M_sun + small_mass * units.M_earth
+    const = constants.G*(total_mass)/(4.0*np.pi**2)
+    if period: return np.cbrt(const*(period*units.day)**2).to("AU").value
     if sep:    return np.sqrt((sep*units.au)**3/const).to("day").value
-    return None
+    raise ValueError("Specify either orbital period or separation")
+
 
 @dataclass.dataclass(slots=True)
 class EvoState:
     """
-    Captures the state of the simulation at a given time.
+    Dataclass that stores the state of the simulation at a given time.
     This can be passed to model functions to calculate
     further parameters.
     """
@@ -78,56 +147,110 @@ class EvoState:
 
     @staticmethod
     def from_dict(fields :dict[str,float]) -> 'EvoState':
-        """Initialises state from dictionary"""
+        """Class method that initialises a state from a dictionary containing
+        simulation parameters. Only a subset of parameters may be defined,
+        the rest will hold `None` value.
+
+        Parameters
+        ----------
+        fields  : dict[str,float]
+            Parameters to initialise in the state.
+
+        Returns
+        -------
+        state : EvoState
+            Instance with specified parameters
+
+        Raises
+        ------
+        AttributeError
+            When attempting to defined a parameter
+            that is not a member of the class.
+        """
         return EvoState(**fields)
 
     def copy(self) -> 'EvoState':
         """
         Returns a shallow copy of the state.
-        Since all of the parameters are floats, a deep copy is not necessary.
+        Since all of the parameters are floats,
+        a deep copy will yield the same result.
         """
         return copy.copy(self)
 
-    def asdict(self) -> dict:
-        """Returns the state fields in a dictionary"""
+    def asdict(self) -> dict[str,float]:
+        """Returns the instance parameters as a dictionary
+        The instance parameters cannot be modified through
+        the returned dictionary, as it is a copy of the state.
+        """
         return dataclass.asdict(self.copy())
 
-    def validate(self, keys :dict = None) -> bool:
+    def validate(self) -> bool:
         """
-        Returns True if all of the state parameters are valid floats
-        (e.g. neither None nor NaN)
+        Returns True if all of the instance parameters are valid floats
+        (neither None nor NaN) and False otherwise.
         """
         values = list(self.asdict().values())
         return not any(x is None or np.isnan(x) for x in values)
 
 
 def wrap_callback(
-        fn :typing.Callable[...,float]
-    ) -> typing.Callable[[EvoState,dict],float]:
+        fn :typing.Callable[typing.Any,float]
+    ) -> typing.Callable[[EvoState,dict],typing.Any]:
     """
-    Wraps a function `fn` that takes keyword parameters
-    to take an EvoState and model parameters instead.
-    Useful to make model functions compatible with the evolution code.
-    Example:
-        def rocky_radius(mass, **kw):
-            return mass**(1/3)
-        rocky_fn = wrap_state(rocky_radius)
-        rcore = rocky_fn(state, model_args)
+    Wraps a function `fn` that takes arbitrary keyword parameters
+    so that it takes two arguments instead: an EvoState and a dictionary. 
+    The wrapped function retains the internal dunder name (__name__) and
+    docs from the original function.
+
+    This is useful to make model functions compatible with the evolution code,
+    which passes the current simulation state together with user-defined
+    keyword arguments to the models.
+    
+    Parameters
+    ----------
+    fn  : Callable[Any, Any]
+        Function to wrap. Must allow for an arbitrary number of
+        keyword arguments that may map to state parameters
+        and/or model keyword arguments.
+        Example: 
+        ```
+        def my_model(mass :float, **kwargs) -> float:
+            pass
+        ```
+
+    Returns
+    -------
+    wrapped_fn : Callable[[EvoState,dict], Any]
+        Wrapped function.
+
+    Examples
+    --------
+    ```
+    def rocky_radius(mass :float, **kw) -> float:
+        return mass**(1/3)
+    
+    rocky_fn = wrap_callback(rocky_radius)
+    rcore = rocky_fn(state, model_args)
+    ```
     """
-    wrapper = lambda state, modelkw: fn(**state.asdict(), **modelkw)
+    wrapper = lambda state, model_kw: fn(**state.asdict(), **model_kw)
     wrapper.__name__ = fn.__name__
+    # TODO: customize docstring to show new input parameters?
+    wrapper.__doc__ = fn.__doc__
     return wrapper
     
 
 def solve_core_model(
-        core_model :typing.Callable[EvoState,float],
+        core_model :typing.Callable[[EvoState,dict],float],
         state      :EvoState,
         guess      :float,
         model_kw   :dict = None
     ) -> list[float,bool]:
     """
-    Solves the core model to return the core mass from its radius instead.
-    See documentation for `solve_envelope_model`.
+    Given a model for the planet's core, which takes a mass to calculate
+    its radius, it solves the model function to return the core mass
+    from a given radius instead.
+    For documentation, see `solve_envelope_model`.
     """
     def wrapper(x, *args, **kwargs):
         state, model_kw = kwargs['state'], kwargs['model_kw']
@@ -146,35 +269,46 @@ def solve_core_model(
 
 
 def solve_envelope_model(
-        env_model :typing.Callable[EvoState,float],
+        env_model :typing.Callable[[EvoState,dict],float],
         state     :EvoState,
         guess     :float,
         model_kw  :dict = None
     ) -> list[float,bool]:
     """
-    Solves an envelope model in order to obtain the envelope mass
-    that matches a given envelope thickness.
-    It also assumes that the planet mass is unknown.
-    Parameters:
-        env_model :callable, function that takes a EvoState
-                    and calculates the envelope thickness.
-        guess     :float, starting guess for the envelope mass fraction.
-        state     :EvoState, planet state.
-        model_kw  :dict, keyword parameters to pass to envelope model.
-    Returns:
-        solution :float, solved envelope mass fraction
-        success  :bool, True if the solution converged
+    Given a model for the planet's envelope, which takes a mass fraction
+    to calculate its thickness, it solves the model function
+    to return the envelope mass fraction from a given thickness instead.
+    It requires the core mass to be defined in the state.
+    
+    Parameters
+    ----------
+    env_model : Callable[[EvoState,dict],float]
+        Function that takes the simulation state and extra arguments
+        in a dict, and returns the envelope thickess.
+    guess     : float
+        Starting guess for the envelope mass fraction.
+    state     : EvoState
+        Simulation state - modified within the function.
+    model_kw  : dict, optional
+        Keyword parameters to pass to the envelope model.
+    
+    Returns
+    -------
+    solution : float
+        Solved envelope mass fraction.
+    success  : bool
+        True if the solution converged, False otherwise.
     """
-    def wrapper(x, *args, **kwargs):
+    def wrapper(x :list[float], *args, **kwargs):
         state, model_kw = kwargs['state'], kwargs['model_kw']
         env_model = kwargs['env_model']
         state.fenv = x[0]
         state.mass = state.mcore / (1 - state.fenv)
-        result_renv = env_model(state)
-        assert ~np.isnan(result_renv), "Failed to find solution"
+        result_renv = env_model(state, model_kw)
         return result_renv - state.renv
-    
-    if model_kw is None: model_kw = dict()
+
+    if model_kw is None:
+        model_kw = dict()
     solution = scipy_leastsq(
         fun = wrapper,  x0 = guess, bounds = [0.0, 1.0],
         kwargs = dict(state=state, model_kw=model_kw, env_model=env_model)
@@ -186,36 +320,50 @@ def solve_planet_from_mass_radius(
         state      :EvoState,
         env_model  :callable,
         core_model :callable,
-        fenv_guess :float = 0.02,
+        fenv_guess :float = 0.01,
         model_kw   :dict = None,
         errors     :bool = False
         ) -> list[EvoState,bool]:
     """
-    Solves for the structure of a planet given its observed mass and radius,
+    Solves for the structure of a planet given its mass and radius,
     as well as orbital and stellar parameters.
-    Assumes mass and radius are defined, but does not require
+    Assumes the mass and radius are defined, but does not require
     core or envelope information.
-    Accepts variables with uncertainties and returns planet parameters
+    It can also accept variables with uncertainties and return planet parameters
     with calculated uncertainties as well.
     
     Parameters
     ----------
-        state      :EvoState, simulation state.
-        env_model  :callable, envelope structure formulation.
-        core_model :callable, mass-radius relation for cores.
-        fenv_guess :float, initial guess for the envelope mass fraction.
-        model_kw   :dict, keyword arguments passed to envelope model.
-        errors     :bool, use uncertainties.
+    state      : EvoState
+        Simulation state - must have mass and radius defined.
+        This instance is modified in the function.
+    env_model  : Callable[[EvoState,dict], float]
+        Function that calculates the envelope thickness
+        from the simulation state. For documentation on
+        signature, see `solve_envelope_model`.
+    core_model : callable
+        Function that calculates the core radius from the
+        simulation state. For documentation on
+        signature, see `solve_core_model`.
+    fenv_guess : float, optional
+        Initial guess for the envelope mass fraction.
+    model_kw   : dict, optional
+        Keyword arguments passed to envelope and core models.
+    errors     : bool, optional
+        If True, enables propagation of uncertainties.
 
     Returns
     -------
-        state :EvoState, success :bool
-            Solved internal structure of the planet,
-            and boolean that specifies whether a solution was found.
+    state :EvoState
+        Solved internal structure of the planet.
+    success :bool
+        Specifies whether the solution converged.
+
     """
 
-    def diff_fn(x, *args, **kwargs) -> float:
-        """Returns difference in envelope radii from M-R relation and structure model"""
+    def diff_fn(x :list[float], *args, **kwargs) -> float:
+        """Returns the difference in envelope thicknesses
+        predicted by the core and envelope models"""
         state, model_kw = kwargs['state'], kwargs['model_kw']
         core_model, env_model = kwargs['core_model'], kwargs['env_model']
         state.fenv = x[0]
@@ -226,8 +374,9 @@ def solve_planet_from_mass_radius(
         # Calculate envelope radius from envelope structure formulation
         renv2 = env_model(state, model_kw)
         return renv1 - renv2
-
-    if model_kw is None: model_kw = dict()
+    
+    if model_kw is None:
+        model_kw = dict()
     solution = scipy_leastsq(
         fun = diff_fn,  x0 = fenv_guess, bounds = [0.0, 1.0],
         kwargs = dict(
@@ -242,79 +391,6 @@ def solve_planet_from_mass_radius(
     return state, solution.success
 
 
-class Integrator:
-    """ ODE solver base class """
-    @abc.abstractmethod
-    def step(self):
-        """Executes one integration step"""
-        pass
-
-    @abc.abstractmethod
-    def running(self):
-        """Returns True if the integration is running"""
-        pass
-
-    @abc.abstractmethod
-    def step_size(self):
-        """Returns the current step size of the integration"""
-        pass
-
-
-class LinearIntegrator(Integrator):
-    """ Simple ODE solver with a fixed time step and linear progression """
-    def __init__(self,
-            fun   :callable,
-            y0    :float,
-            start :float,
-            end   :float,
-            step_size :float
-        ):
-        self.function = fun
-        self.y = y0
-        self.dy = 0.0
-        self.start = start
-        self.end = end
-        self.dt = step_size
-        self.age = self.start
-        self.direction = 1 if start < end else -1
-        self.status = None
-    
-    def step(self) -> typing.NoReturn:
-        self.dy = self.function(self.age, self.y)
-        self.y += self.dy * self.dt
-        self.age += self.direction * self.dt
-
-    def running(self) -> bool:
-        if self.direction == 1:
-            running = self.age < self.end
-        else:
-            running = self.age > self.end
-        self.status = "running" if running else "finished"
-        return running
-
-    def step_size(self) -> float:
-        return self.dt
-
-
-class RK45Integrator(Integrator):
-    def __init__(self, y0 :float, **kw):
-        self.handle = scipy_RK45(y0 = y0, **kw)
-        self.dt     :float = self.handle.step_size
-        self.info   :str = None
-        self.status :str = None
-
-    def step(self):
-        self.info = self.handle.step()
-        self.dt = self.handle.step_size
-    
-    def running(self) -> bool:
-        self.status = self.handle.status
-        return self.status == "running"
-
-    def step_size(self) -> float:
-        return self.dt
-
-
 class Planet:
 
     ###################
@@ -322,6 +398,7 @@ class Planet:
     ###################
 
     debug :bool = False
+    """ If set to True, debug messages are printed """
 
     ###################
     # Dunder Methods  #
@@ -503,20 +580,29 @@ class Planet:
             end    :float,
             method :str = "auto",
             step   :str = 0.01,
+            progressbar : bool = False,
             **kwargs
         ) -> pd.DataFrame:
         """
         Evolves the state of the planet in time.
+        The planet parameters and models must have been set.
+
         Parameters
         ----------
-        start, end  :float, simulation initial and final ages in Myr.
-        method      :str, integration method, "linear", "RK45", "auto"
-        step        :float, step size for integration
+        start, end  : float
+            Initial and final age bounds for the simulation in Myr.
+        method      : str | IntegratorBase, optional
+            Integration method: "linear", "RK45" or "auto".
+        step        : float
+            Step size for the integration, passed to the integrator.
+        progressbar : bool
+            Displays a progress bar of the simulation using the `tqdm` module.
 
         Returns
         -------
-        df      :pandas.DataFrame, with columns for each simulation parameter,
-                and rows for the values at each simulation step.
+        pandas.DataFrame
+            Dataframe with a column for each simulation parameter,
+            and a row for the values at each simulation step.
         """
         assert start > 0.0 and end > 0.0, "Invalid initial or final ages"
         
@@ -530,7 +616,7 @@ class Planet:
         mloss_conv = (units.g / units.s).to("M_earth/Myr")
         env_limit_factor = (1 + 1e-5)
 
-        def step_fn(age :float, prev_radius :float) -> float:
+        def step_fn(age :float, prev_radius :float, **kw) -> float:
             # Update age, lx, leuv, lbol
             direction = 1 if (age > state.age) else -1
             state.age = age
@@ -553,34 +639,32 @@ class Planet:
             drdt = (state.radius - prev_radius) / state.tstep
             return drdt
 
-        if method == "auto": method = "linear"
+        assert method in ["auto","linear"], "Only Euler's method is implemented!"
+        
         Planet._debug_print(
             f"Integrating from t={start:.2f} to t={end:.2f} Myr",
             f"with method '{method}'"
         )
+        
+        integration_methods = dict(
+            linear = [EulerIntegrator, dict(step_size=step)],
+            auto   = [EulerIntegrator, dict(step_size=step)],
+            RK45   = [RK45Integrator , dict(max_step=step)],
+        )
 
-        if method == "linear":
-            integrator :Integrator = LinearIntegrator(
-                fun = step_fn, y0 = state.radius,
-                start = start, end = end, step_size = step
-            )
-        elif method == "RK45":
-            integrator :Integrator = RK45Integrator(
-                fun = step_fn, y0 = [state.radius],
-                t0 = start, t_bound = end,
-                max_step = step
-            )
-        else:
-            raise ValueError("Unknown integrator option")
+        integ_cls, integ_args = integration_methods[method]
 
+        integrator :IntegratorBase = integ_cls(
+            fun = step_fn, y_start = state.radius,
+            t_start = start, t_end = end,
+            progress = progressbar, **integ_args
+        )
+        
         while(integrator.running()):
             integrator.step()
             state.tstep = integrator.step_size()
-        
-        Planet._debug_print(
-            f"Finished integration with status",
-            f"'{integrator.status}'"
-        )
+
+        Planet._debug_print(f"Finished integration")
         df = pd.DataFrame([state.asdict() for state in evo_states])
         return df
 
@@ -592,7 +676,7 @@ class Planet:
     def _parse_star(self, star :dict|typing.Any) -> dict:
         """
         Collects stellar parameters and evolution tracks
-        from input information.
+        from input arguments.
         """
         if isinstance(star, dict):
             # Stellar tracks from functions
@@ -616,7 +700,9 @@ class Planet:
         
         raise NotImplementedError("Invalid format for stellar model")
     
-    def _solve_from_mass_radius(self, state :EvoState):
+    def _solve_from_mass_radius(self, state :EvoState) -> EvoState:
+        """ Internal helper to solve the planet's structure from its
+        measured mass and radius alone """
         # Assume mass and radius are provided
         state, success = solve_planet_from_mass_radius(
             state      = state,
@@ -625,14 +711,13 @@ class Planet:
             fenv_guess = 0.01,
             model_kw   = self.model_args
         )
-        Planet._debug_print(f"Mass-radius solver success... {success}")
+        Planet._debug_print(f"Mass-radius solver converged... {success}")
         return state
     
     def _solve_from_core_fenv(self, state :EvoState) -> EvoState:
         """
-        Solves an envelope model in order to obtain the envelope thickness
-        that matches a given envelope mass fraction.
-        Assumes the following parameters are defined: mcore, rcore, fenv, period, sep
+        Uses the envelope model to calculate the envelope thickness
+        from the core mass and radius, and the envelope mass fraction.
         Parameters:
             state   :EvoState, simulation state
         """
@@ -646,8 +731,8 @@ class Planet:
     ###################
 
     @staticmethod
-    def _debug_print(*strings) -> typing.NoReturn:
+    def _debug_print(*args : list[str]) -> typing.NoReturn:
         """Prints message in debug mode"""
         if Planet.debug is True:
-            print(f"[photoevolver.Planet] ", *strings)
+            print(f"[photoevolver.Planet] ", *args)
 
