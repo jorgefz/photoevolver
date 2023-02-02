@@ -4,4 +4,4 @@ scipy
 astropy
 matplotlib
 pandas
-
+tqdm

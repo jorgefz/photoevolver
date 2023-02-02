@@ -115,6 +115,7 @@ class AdaptiveIntegrator(IntegratorBase):
             tol        :float = 0.01,
             **base_kwargs
         ):
+        raise NotImplementedError("Adaptive integrator is not available")
         super().__init__(**base_kwargs)
         self.fun_kwargs = fun_kwargs
         if self.fun_kwargs is None:
@@ -161,7 +162,6 @@ class AdaptiveIntegrator(IntegratorBase):
 
     def running(self) -> bool:
         return self.run
-
 
 
 class RK45Integrator(IntegratorBase):
