@@ -132,7 +132,7 @@ def RadiusOwenWu17(fenv, mass, rcore, age, fbol, dist, Xiron=1/3, Xice=0.0, **kw
     # return (10**log_D_Rrcb_sol) / Units.R_earth.to('cm')
     
     """
-    DRAGONS BE BELOW
+    HERE BE DRAGONS
     """
 
     # now find f-factor to compute planet radius

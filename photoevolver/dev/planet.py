@@ -13,109 +13,8 @@ from scipy.optimize import (
 )
 import tqdm
 
+from . import physics, utils
 from .integrator import *
-
-def _is_mors_star(obj: typing.Any) -> bool:
-    """Checks if an object is an instance of 'Star' from the Mors module.
-    Additionally, it returns False if it fails to import Mors.
-    
-    Parameters
-    ----------
-    obj : Mors.Star | Any
-        Object to check.
-
-    Returns
-    -------
-    bool : bool
-        Whether the object is an instance of 'Mors.Star'
-
-    """
-    try:
-        import Mors
-    except ImportError:
-        return False
-    return isinstance(obj, Mors.Star)
-
-
-def get_flux(
-        lum     :float,
-        dist_au :float = None,
-        dist_pc :float = None
-    ) -> float:
-    """Calculates the flux that would be observed from a distance
-    in either AU (`dist_au`) or parsecs (`dist_pc`)
-    given the luminosity of the source.
-    If both distances are specified, the one in AU takes precedence.
-    
-    Parameters
-    ----------
-    lum     : float
-        Luminosity of the source in units of erg/s.
-    dist_au : float, optional
-        Distance to the source in units of AU.
-    dist_pc : float, optional
-        Distance to the source in units of parsecs.
-
-    Returns
-    -------
-    flux    : float
-        Corresponding flux in units of erg/s/cm^2.
-
-    Raises
-    ------
-    ValueError
-        If neither the distance in AU or parsecs is provided.
-
-    """
-    eqn = lambda lum,dist: lum/(4.0*np.pi*(dist)**2)
-    if dist_au: return eqn(lum, dist_au*units.au.to('cm'))
-    if dist_pc: return eqn(lum, dist_pc*units.pc.to('cm'))
-    raise ValueError(
-        "Specify distance in either AU (`dist_au`) or parsecs (`dist_pc`)")
-
-
-def keplers_third_law(
-        big_mass   :float,
-        small_mass :float = 0.0,
-        period     :float = None,
-        sep        :float = None
-    ) -> float:
-    """Application of Kepler's third law.
-    For a system of two bodies orbiting each other, it returns either
-    the orbital period (if separation specified), or orbital separation
-    (if period specified) of their common orbit.
-    The mass of the two bodies can be specified, but only the
-    mass of the larger one is required, which is an acceptable approximation
-    when the difference in mass is large.
-    If both period and separation are specified, the period takes precedence.
-
-    Parameters
-    ----------
-    big_mass    : float
-        Mass of the more massive body in units of solar masses.
-    small_mass  : float, optional
-        Mass of the lighter body in units of Earth masses (different unit!)
-    period      : float, optional
-        Orbital period in units of days.
-    sep         : float, optional
-        Orbital separation in AU
-
-    Returns
-    -------
-    period_or_sep : float
-        Period if separation specified, or separation if period specified.
-
-    Raises
-    ------
-    ValueError
-        If neither period or separation are defined.
-
-    """
-    total_mass = big_mass * units.M_sun + small_mass * units.M_earth
-    const = constants.G*(total_mass)/(4.0*np.pi**2)
-    if period: return np.cbrt(const*(period*units.day)**2).to("AU").value
-    if sep:    return np.sqrt((sep*units.au)**3/const).to("day").value
-    raise ValueError("Specify either orbital period or separation")
 
 
 @dataclass.dataclass(slots=True)
@@ -403,7 +302,7 @@ class Planet:
     ###################
     # Dunder Methods  #
     ###################
-
+    
     def __init__(self, **kwargs):
         """
         Initialises the starting conditions of a planet:
@@ -530,10 +429,12 @@ class Planet:
         # Calculate period or separation
         if state.period:
             assert state.period > 0.0, "Period must be greater than zero"
-            state.sep = keplers_third_law(state.mstar, period = state.period)
+            state.sep = physics.keplers_third_law(
+                state.mstar, period = state.period)
         elif state.sep:
             assert state.sep > 0.0, "Semi-major axis must be over zero"
-            state.period = keplers_third_law(state.mstar, sep = state.sep)
+            state.period = physics.keplers_third_law(
+                state.mstar, sep = state.sep)
         else:
             raise ValueError("Specify either orbital period or separation")
 
@@ -690,7 +591,7 @@ class Planet:
             # Stellar tracks from arrays
             raise NotImplementedError("Invalid format for stellar model")
         
-        elif _is_mors_star(star):
+        elif utils.is_mors_star(star):
             return dict(
                 mass = star.Mstar,
                 lx   = lambda state,kw: star.Lx(state.age),

@@ -122,7 +122,7 @@ def ChenRogers16(**kwargs):
         c0, c1, c2 = coeff['c0'], coeff['c1'], coeff['c2']
 
     # --
-    terms = [ \
+    terms = [
         np.log10( kwargs['mass'] ),
         np.log10( kwargs['fenv'] /0.05),
         np.log10( kwargs['fbol'] * ergcm2s_to_Wm2 / Fbol_earth ),

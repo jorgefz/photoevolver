@@ -13,3 +13,4 @@ class settings:
 	verbose = False
 	warnings_as_errors = False
 	no_nans = False
+	enforce_bounds = False

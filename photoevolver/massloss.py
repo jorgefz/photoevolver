@@ -111,7 +111,7 @@ def EnergyLimited(**kwargs):
         xi =( kwargs['dist'] / kwargs['radius'] ) * ( kwargs['mass'] / kwargs['mstar'] / 3)**(1/3)
         K_tide = 1 - 3/(2*xi) + 1/(2*(xi)**3) 
         mloss = kwargs['beta']**2 * kwargs['eff'] * np.pi * Fxuv * kwargs['radius']**3 / (const.G.value * K_tide * kwargs['mass'])
-        return mloss * 5.28e-12 # Earth masses per Myr
+        return mloss * (units.kg.to('M_earth')/units.s.to('Myr')) # Earth masses per Myr
 
 
 
@@ -184,7 +184,7 @@ def Kubyshkina18(**kwargs):
         Kappa = xp['zeta'] + xp['theta']*np.log(dist)
         mloss = np.exp(xp['beta']) * (Fxuv)**xp['alpha'][0] * (dist)**xp['alpha'][1] * (rp)**xp['alpha'][2] * (Jeans_param)**Kappa
 
-        return mloss * 5.28e-15 # g/s to M_earth/Myr
+        return mloss * (units.g.to('M_earth')/units.s.to('Myr')) # g/s to M_earth/Myr
 
 
 
