@@ -158,7 +158,7 @@ def planet_density(mass :float, radius :float) -> float:
     -------
     density : float, in units of g/cm^3
     """
-    cov = (constants.M_earth / constants.R_earth**3).to("g cm^-3").value
+    conv = (constants.M_earth / constants.R_earth**3).to("g cm^-3").value
     return conv * mass / (4/3 * np.pi * radius**3)
 
 
@@ -196,17 +196,18 @@ def rossby_number(
     ----------
     vkcolor  : float, V-K color index
     prot     : float, rotation period in days
-    full_out : bool (optional), if True, returns both rossby number and turnover time
+    full_out : bool (optional), if True, returns both rossby number
+                and turnover time
     safe     : bool (optional), enforce model limits by raising ValueError
 
     Returns:
     --------
     rossby  : float, rossby number
     """
-    bounds = [1.1, 6.6]
-    if safe and (bounds[0] <= vkcolor <= bounds[1]):
+    vk_bounds = [1.1, 6.6]
+    if safe and not (vk_bounds[0] <= vkcolor <= vk_bounds[1]):
         raise ValueError(
-            f"V-K color {vkcolor:3g} out of model bounds {bounds}"
+            f"V-K color {vkcolor:3g} out of model bounds {vk_bounds}"
         )
     if(vkcolor <= 3.5):
         turnover = 10**(0.73 + 0.22*vkcolor)
@@ -220,6 +221,7 @@ def rossby_number(
 def rossby_number_from_mass(
         mass    :float,
         prot    :float,
+        full_out :bool = False,
         safe    :bool = False
     ) -> float:
     """
@@ -229,16 +231,20 @@ def rossby_number_from_mass(
     ----------
     mass    : float, stellar mass in Solar masses
     prot    : float, stellar spin period in days
+    full_out : bool (optional), if True, returns both rossby number
+            and turnover time
     safe    : float (optional), enforce model limits by raising ValueError
 
     Returns
     -------
     rossby  : float, rossby number
     """
-    bounds = [0.09, 1.36]
-    if safe and (bounds[0] < mass < bounds[1]):
-        raise ValueError(f"Mass {mass} out of model bounds {bounds}")
+    mass_bounds = [0.09, 1.36]
+    if safe and not (mass_bounds[0] < mass < mass_bounds[1]):
+        raise ValueError(f"Mass {mass} out of model bounds {mass_bounds}")
     log_t = 1.16 - 1.49 * np.log10(mass) - 0.54 * np.log10(mass)**2
+    if full_out:
+        return prot / (10**log_t), 10**log_t
     return prot / (10**log_t)
 
 

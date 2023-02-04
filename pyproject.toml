@@ -4,13 +4,13 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "photoevolver"
-version = "1.6.4"
+version = "2.0"
 authors = [
     {name = "Jorge Fernandez", email = "Jorge.Fernandez-Fernandez@warwick.ac.uk"},
 ]
 description = "Simulates the evolution of planetary atmospheres under evaporation"
 readme = "README.md"
-requires-python = ">=3.7"
+requires-python = ">=3.10"
 # keywords = ["one", "two"]
 # license = {text = "LICENSE"}
 classifiers = [

@@ -6,7 +6,7 @@ File description
 import numpy as np
 import uncertainties as uncert
 
-from .planet import EvoState, Planet
+from .evostate import EvoState
 from . import physics, utils
 
 
@@ -293,3 +293,48 @@ def massloss_salz16(state :EvoState, model_kw :dict) -> float:
     return massloss_energy_limited(state, kwargs)
 
 
+@np.vectorize
+def euv_king18(
+        lx     : float,
+        rstar  : float,
+        energy : str = "0.1-2.4"
+    ):
+    """
+    Calculates the EUV luminosity from the X-rays
+    using the empirical relation by King et al. (2018).
+    Source: https://ui.adsabs.harvard.edu/abs/2018MNRAS.478.1193K/abstract
+
+    Parameters
+    ----------
+    lx      : float, X-ray luminosity of the star in erg/s
+    rstar   : float, radius of the star in solar radii
+    energy  : str, input energy range of the X-rays in keV.
+            The allowed ranges are: 0.1-2.4, 0.124-2.48, 0.15-2.4,
+            0.2-2.4, and 0.243-2.4 keV.
+
+    Returns
+    -------
+    leuv    : float, the EUV luminosity of the star with energy between
+            from 0.0136 keV and the lower range of the input X-rays.
+    """
+    # Model parameters
+    params = {       # norm, exponent
+        "0.1-2.4"   : [460,  -0.425],
+        "0.124-2.48": [650,  -0.450],
+        "0.15-2.4"  : [880,  -0.467],
+        "0.2-2.4"   : [1400, -0.493],
+        "0.243-2.4" : [2350, -0.539],
+    }
+
+    assert energy in params, (
+        f"Energy range not covered by model.\n"
+        +f"Options: {allowed_ranges.keys()}"
+    )
+    
+    # This relation uses X-ray and EUV fluxes at the stellar surface.
+    c, p = params[energy]
+    conv = physics.constants.R_sun.to('cm').value
+    fx_at_rstar = lx / (4.0 * np.pi * (rstar * conv)**2)
+    feuv = c * (fx_at_rstar ** (p+1))  # EUV-to-Xrays flux ratio
+    leuv = feuv * 4.0 * np.pi * (feuv * physics.units.cm.to('R_sun'))**2
+    return leuv

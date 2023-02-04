@@ -1,4 +1,4 @@
-__version__ = "1.6.4"
+__version__ = "2.0"
 __author__ = "Jorge Fernandez"
 
 """
@@ -16,6 +16,9 @@ __author__ = "Jorge Fernandez"
 - Unphysical envelope enlargement calculator
 
 --- Changelog ---
+
+Version 2.0
+- A few things
 
 Version 1.6.4
     - Changed behaviour of `solve_structure` when solution could not be found.

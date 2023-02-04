@@ -17,7 +17,7 @@ class IntegratorBase(abc.ABC):
             t_start  :float,
             t_end    :float,
             progress :bool = False,
-            **_
+            **kwargs
         ):
         """Initialises integrator"""
         self.fun     = fun
