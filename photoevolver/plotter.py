@@ -3,7 +3,7 @@ import matplotlib as mpl
 import matplotlib.pyplot as plt
 from matplotlib.lines import Line2D
 import numpy as np
-from typing import Any
+from typing import Any, NoReturn
 from .utils import indexable
 
 def NewFigure(
@@ -11,7 +11,7 @@ def NewFigure(
         cols  :int = 1,
         scale :float = 1.0,
         aspect_ratio :float = 1.0
-    ):
+    ) -> tuple:
     fig, axs = plt.subplots(
             nrows = rows, ncols = cols,
             # sharey='row',
@@ -24,7 +24,7 @@ def AxisLabels(
         ylabel :str = 'linear',
         panel  :Any = None,
         fontsize : float = 15
-    ):
+    ) -> NoReturn:
     if panel is None:
         plt.xlabel(xlabel, fontsize = fontsize)
         plt.ylabel(ylabel, fontsize = fontsize)
@@ -36,7 +36,7 @@ def AxisScales(
         xscale :str = 'linear',
         yscale :str = 'linear',
         panel  :Any = None
-    ):
+    ) -> NoReturn:
     if panel is None:
         plt.xscale(xscale)
         plt.yscale(yscale)
@@ -47,10 +47,10 @@ def AxisScales(
 def AxisLogs(panel :Any = None):
     AxisScales('log', 'log', panel)
 
-def Tight():
+def Tight() -> NoReturn:
     plt.tight_layout()
 
-def CustomLegend(*elements :dict, panel :Any = None, **kwargs):
+def CustomLegend(*elements :dict, panel :Any = None, **kwargs) -> NoReturn:
     """Provides custom line style objects to define the legend elements"""
     lines = [ Line2D([0], [0], **e) for e in elements]
     if panel is None: panel = plt
@@ -58,8 +58,12 @@ def CustomLegend(*elements :dict, panel :Any = None, **kwargs):
     if 'shadow' not in kwargs: kwargs['shadow'] = False
     panel.legend(handles = lines, **kwargs)
 
-def XTicks(ticks: list[float] = [], panel :Any = None, fontsize :float = np.nan):
-    """Sets the X axis tick labels"""
+def XTicks(
+        ticks    :list[float] = None,
+        panel    :Any = None,
+        fontsize :float = np.nan
+    ) -> NoReturn:
+    """Sets the X axis tick labels and/or label fontsize"""
     if panel is None: panel = plt.gca()
     if ticks:
         panel.set_xticks(ticks)
@@ -67,7 +71,11 @@ def XTicks(ticks: list[float] = [], panel :Any = None, fontsize :float = np.nan)
     if ~np.isnan(fontsize):
         panel.tick_params(axis='x', which='both', labelsize=fontsize)
 
-def YTicks(ticks: list[float] = [], panel :Any = None, fontsize :float = np.nan):
+def YTicks(
+        ticks    :list[float] = None,
+        panel    :Any = None,
+        fontsize :float = np.nan
+    ) -> NoReturn:
     """Sets the Y axis tick labels"""
     if panel is None: panel = plt.gca()
     if ticks:
@@ -76,7 +84,7 @@ def YTicks(ticks: list[float] = [], panel :Any = None, fontsize :float = np.nan)
     if ~np.isnan(fontsize):
         panel.tick_params(axis='y', which='both', labelsize=fontsize)
 
-def StylePanels(panels :list|Any = None, fontsize :int = 15):
+def StylePanels(panels :list|Any = None, fontsize :int = 15) -> NoReturn:
     """Applies a custom figure style"""
     if panels is None:
         panels = plt.gca()

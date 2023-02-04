@@ -71,6 +71,10 @@ def test_rebin_array():
     result = utils.rebin_array(np.array(data), 3, linear_combination)
     expect = np.sqrt([14, 14, 100**2])
     assert np.isclose(result, expect).all()
+
+    # Wrong input
+    with pytest.raises(ValueError):
+        utils.rebin_array(data, 0)
     
 
     

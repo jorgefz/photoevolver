@@ -5,6 +5,7 @@ File description
 
 import numpy as np
 import uncertainties as uncert
+from uncertainties import umath
 
 from .evostate import EvoState
 from . import physics, utils
@@ -26,6 +27,8 @@ def core_otegi20(state :EvoState, model_kw :dict) -> float|uncert.UFloat:
             if errors are enabled, and a python float otherwise.
     """
     bounds = [0.0, 100.0]
+    if not state.mcore or umath.isnan(state.mcore) or state.mcore<=0:
+        raise ValueError("Invalid core mass")
     scaling = uncert.ufloat(1.03, 0.02)
     exponent = uncert.ufloat(0.29, 0.01)
     rcore = scaling * state.mcore ** exponent

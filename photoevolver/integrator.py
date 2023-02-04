@@ -28,25 +28,28 @@ class IntegratorBase(abc.ABC):
         self.do_pbar = progress
         self.pbar :tqdm.tqdm = None
     
-    def _init_pbar(self):
+    def _init_pbar(self) -> bool:
         """Initialises progress bar"""
-        if not self.do_pbar: return
+        if not self.do_pbar: return False
         fmt = (r"{desc}: {percentage:.3f}%|{bar}| "
                 + r"{n:.3f}/{total_fmt} [{elapsed}<{remaining}]")
         self.pbar = tqdm.tqdm(
             total = abs(self.t_start-self.t_end),
             bar_format = fmt
         )
+        return True
     
-    def _update_pbar(self):
+    def _update_pbar(self) -> bool:
         """Advances progress bar by one time step"""
-        if not self.pbar: return
+        if not self.pbar: return False
         self.pbar.update(self.step_size())
+        return True
 
     def _end_pbar(self):
         """Destroy progress bar object"""
-        if not self.pbar: return
-        self.pbar.close()
+        if self.pbar:
+            self.pbar.close()
+            self.pbar = None
 
     @abc.abstractmethod
     def step(self):
@@ -90,7 +93,7 @@ class EulerIntegrator(IntegratorBase):
         self.dydt = self.fun(self.age, self.y, **self.fun_kwargs)
         self.y   += self.dydt * dt
         self.age += self.direction * dt
-        if self.direction * (self.age - self.t_end) > 0:
+        if self.direction * (self.age - self.t_end + self.step_size()) > 0:
             self.run = False
             self._end_pbar()
             return
@@ -101,93 +104,4 @@ class EulerIntegrator(IntegratorBase):
 
     def running(self) -> bool:
         return self.run
-
-
-
-class AdaptiveIntegrator(IntegratorBase):
-    """ Second order integrator that uses Heun's method and
-    and adaptive step size
-    """
-    def __init__(
-            self,
-            step_size  :float,
-            fun_kwargs :dict = None,
-            tol        :float = 0.01,
-            **base_kwargs
-        ):
-        raise NotImplementedError("Adaptive integrator is not available")
-        super().__init__(**base_kwargs)
-        self.fun_kwargs = fun_kwargs
-        if self.fun_kwargs is None:
-            self.fun_kwargs = dict()
-        self.y    :float = self.y_start
-        self.dt   :float = step_size
-        self.age  :float = self.t_start
-        self.run  :bool  = True
-        self.k1   :float = None
-        self.k2   :float = None
-        self.tol  :float = tol
-        self._init_pbar()
-
-    def step(self) -> typing.NoReturn:
-        if self.k1 is None:
-            self.k1 = self.fun(self.age, self.y, **self.fun_kwargs)
-            return
-        
-        self.k2 = self.fun(
-            self.age + self.dt * self.direction,
-            self.y + self.dt * self.k1,
-            **self.fun_kwargs
-        )
-
-        err = 0.5 * abs(self.k1 - self.k2)
-        fac = self.tol / err
-        if fac > 1.0:
-            self.y += self.dt * self.k1
-            self.k1 = self.k2
-            self.age += self.direction * self.dt
-        
-        self.dt *= 0.9 * fac
-
-        print(f"k1={self.k1}, k2={self.k2}, {err=}, {fac=}, {self.dt=}")
-
-        if self.direction * (self.age - self.t_end) > 0:
-            self.run = False
-            self._end_pbar()
-            return
-        self._update_pbar()
-    
-    def step_size(self) -> float:
-        return self.dt
-
-    def running(self) -> bool:
-        return self.run
-
-
-class RK45Integrator(IntegratorBase):
-    def __init__(self, max_step :float, **kw):
-        super().__init__(**kw)
-        self.handle = scipy_RK45(
-            fun = self.fun, t0 = self.t_start, y0 = [self.y_start],
-            t_bound = self.t_end, max_step = max_step
-        )
-        self.dt     :float = self.handle.step_size
-        self.info   :str = None
-        self.status :str = None
-        self._init_pbar()
-
-    def step(self):
-        self.info = self.handle.step()
-        self.dt = self.handle.step_size
-        self._update_pbar()
-    
-    def running(self) -> bool:
-        self.status = self.handle.status
-        run = (self.status == "running")
-        if not run:
-            self._end_pbar()
-        return run
-
-    def step_size(self) -> float:
-        return self.dt
 
