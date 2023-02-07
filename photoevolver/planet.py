@@ -81,7 +81,8 @@ def solve_envelope_model(
         state, model_kw = kwargs['state'], kwargs['model_kw']
         env_model = kwargs['env_model']
         state.fenv = x[0]
-        state.mass = state.mcore / (1 - state.fenv)
+        # state.mass = state.mcore / (1 - state.fenv)
+        state.mass = state.mcore * (1 + state.fenv)
         result_renv = env_model(state, model_kw)
         return result_renv - state.renv
 
@@ -146,7 +147,8 @@ def solve_planet_from_mass_radius(
         core_model, env_model = kwargs['core_model'], kwargs['env_model']
         state.fenv = x[0]
         # Calculate envelope radius from mass-radius relation
-        state.mcore = (1.0 - state.fenv) * state.mass
+        # state.mcore = (1.0 - state.fenv) * state.mass
+        state.mcore = state.mass / (1.0 + state.fenv)
         state.rcore = core_model(state, model_kw)
         renv1 = state.radius - state.rcore
         # Calculate envelope radius from envelope structure formulation
@@ -163,7 +165,8 @@ def solve_planet_from_mass_radius(
         )
     )
     state.fenv = solution.x[0]
-    state.mcore = (1.0 - state.fenv) * state.mass
+    # state.mcore = (1.0 - state.fenv) * state.mass
+    state.mcore = state.mass / (1.0 + state.fenv)
     state.rcore = core_model(state, model_kw)
     state.renv = state.radius - state.rcore
     return state, solution.success
