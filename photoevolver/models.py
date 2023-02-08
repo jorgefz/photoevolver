@@ -2,7 +2,9 @@
 """
 File description
 """
-
+import sys
+import os
+import contextlib
 import numpy as np
 import uncertainties as uncert
 from uncertainties import umath
@@ -296,19 +298,38 @@ def massloss_salz16(state :EvoState, model_kw :dict) -> float:
     return massloss_energy_limited(state, kwargs)
 
 
+def massloss_kubyshkina18(state :EvoState, model_kw :dict) -> float:
+    """ Calculates the mass loss rate using the hydrodynamic models
+    and interpolator by Kubyshkina et al (2018). """
+    from .K18grid import interpolator
+    # INTERPOL(Mss,EUV,T_i,r_i,m_i, dataset_file = None)
+    ## INPUT: Mstar [Msun], EUV [erg/cm/s], Teq [K], Rpl [Re], Mpl [Me]
+    feuv = physics.get_flux(state.leuv, dist_au=state.sep)
+    fbol = physics.get_flux(state.lbol, dist_au=state.sep)
+    teq = physics.temp_eq(fbol)
+    args = dict(Mss = state.mstar, EUV = feuv, T_i = teq,
+        r_i = state.radius, m_i = state.mass)
+
+    # Redirect stdout to avoid inteprolator messages clogging up buffer
+    with utils.supress_stdout():
+        result = interpolator.INTERPOL(**args)
+    
+    mloss = float(result)
+    return mloss
+
 
 def massloss_kubyshkina18_approx(state :EvoState, model_kw :dict) -> float:
     """
     Calculates the atmospheric mass loss rate driven by photoevaporation
-    This is based on the hydrodynamic models by Kubyshkina et al (2018)
+    This is based on the hydro-based expression by Kubyshkina et al (2018).
 
     Parameters
     ----------
         mass   : float, planet mass in Earth masses
         radius : float, planet radius in Earth radii
-        Lxuv   : float, XUV luminosity of the star in erg/s
-        Lbol   : float, bolometric luminosity in erg/s
-        dist   : float, planet-star separation in AU
+        lxuv   : float, XUV luminosity of the star in erg/s
+        lbol   : float, bolometric luminosity in erg/s
+        sep    : float, planet-star separation in AU
         
     Returns
     -------
@@ -318,9 +339,9 @@ def massloss_kubyshkina18_approx(state :EvoState, model_kw :dict) -> float:
     bounds = {
         "radius": [1.0,  39.0],
         "mass":   [1.0,  10.0],
-        "Lxuv":   [1e26, 5e30],
-        "Lbol":   [1.0,  1e40],
-        "dist":   [0.002, 1.3]
+        "lxuv":   [1e26, 5e30],
+        "lbol":   [1.0,  1e40],
+        "sep":    [0.002, 1.3]
     }
 
     large_delta = {

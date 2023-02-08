@@ -47,6 +47,16 @@ def AxisScales(
 def AxisLogs(panel :Any = None):
     AxisScales('log', 'log', panel)
 
+def PanelLimits(
+        xlims :list[float,2] = None,
+        ylims :list[float,2] = None,
+        panel :Any = None
+    ) -> NoReturn:
+    xlim_fn = panel.set_xlim if panel else plt.xlim
+    ylim_fn = panel.set_ylim if panel else plt.ylim
+    if xlims: xlim_fn(xlims)
+    if ylims: ylim_fn(ylims)
+
 def Tight() -> NoReturn:
     plt.tight_layout()
 
@@ -74,15 +84,24 @@ def XTicks(
 def YTicks(
         ticks    :list[float] = None,
         panel    :Any = None,
-        fontsize :float = np.nan
+        fontsize :float = None
     ) -> NoReturn:
     """Sets the Y axis tick labels"""
     if panel is None: panel = plt.gca()
     if ticks:
         panel.set_yticks(ticks)
         panel.get_yaxis().set_major_formatter(mpl.ticker.ScalarFormatter())
-    if ~np.isnan(fontsize):
+    if fontsize is None:
         panel.tick_params(axis='y', which='both', labelsize=fontsize)
+
+def PanelTicks(
+        xticks   :list[float] = None,
+        yticks   :list[float] = None,
+        panel    :Any = None,
+        fontsize :float = None
+    ) -> NoReturn:
+    XTicks(xticks, panel=panel, fontsize=fontsize)
+    YTicks(yticks, panel=panel, fontsize=fontsize)
 
 def StylePanels(panels :list|Any = None, fontsize :int = 15) -> NoReturn:
     """Applies a custom figure style"""

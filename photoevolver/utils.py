@@ -1,5 +1,7 @@
 import numpy as np
 import typing
+import contextlib
+import os
 
 def kprint(**kwargs) -> None:
     """Prints keyword arguments in new lines"""
@@ -9,7 +11,6 @@ def kprint(**kwargs) -> None:
 def ezip(*args) -> typing.Generator:
     """Zip with enumerate generator. First item is index"""
     return enumerate(zip(*args))
-
 
 def ezip_r(*args) -> typing.Generator:
     """`ezip` that reverses the elements on the input iterables"""
@@ -21,6 +22,13 @@ def indexable(obj :typing.Any) -> bool:
     E.g. lists, dicts, or anything that can be addressed with obj[index]
     """
     return hasattr(obj, '__getitem__')
+
+@contextlib.contextmanager
+def supress_stdout():
+    """ Supresses write calls to stdout """
+    with open(os.devnull, "w") as null:
+        with contextlib.redirect_stdout(null):
+            yield
 
 def is_mors_star(obj :typing.Any) -> bool:
     """Checks if an object is an instance of 'Star' from the Mors module.

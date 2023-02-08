@@ -1,4 +1,6 @@
-
+"""
+Collection of physical equations and quantities.
+"""
 
 import numpy as np
 from astropy import units, constants
@@ -44,13 +46,19 @@ def get_flux(
         If neither the distance in AU or parsecs is provided.
 
     """
-    eqn = lambda lum,dist: lum/(4.0*np.pi*(dist)**2)
-    if dist_au: return eqn(lum, dist_au*units.au.to('cm'))
-    if dist_pc: return eqn(lum, dist_pc*units.pc.to('cm'))
-    raise ValueError(
-        "Specify distance in either AU (`dist_au`) or parsecs (`dist_pc`)")
+    if dist_au:
+        conv = units.au.to('cm')
+        dist = dist_au
+    elif dist_pc:
+        conv = units.pc.to('cm')
+        dist = dist_pc
+    else:
+        raise ValueError(
+            "Specify distance in either AU (`dist_au`) or parsecs (`dist_pc`)"
+        )
+    return lum/(4.0*np.pi*(conv*dist)**2)
 
-    
+
 def get_luminosity(
         flux    :float,
         dist_au :float = None,
@@ -81,12 +89,17 @@ def get_luminosity(
         If neither the distance in AU or parsecs is provided.
 
     """
-    eqn = lambda lum,dist: flux*(4.0*np.pi*(dist)**2)
-    if dist_au: return eqn(flux, dist_au*units.au.to('cm'))
-    if dist_pc: return eqn(flux, dist_pc*units.pc.to('cm'))
-    raise ValueError(
-        "Specify distance in either AU (`dist_au`) or parsecs (`dist_pc`)")
-
+    if dist_au:
+        conv = units.au.to('cm')
+        dist = dist_au
+    elif dist_pc:
+        conv = units.pc.to('cm')
+        dist = dist_pc
+    else:
+        raise ValueError(
+            "Specify distance in either AU (`dist_au`) or parsecs (`dist_pc`)"
+        )
+    return flux*(4.0*np.pi*(conv*dist)**2)
 
 def keplers_third_law(
         big_mass   :float,
@@ -127,8 +140,10 @@ def keplers_third_law(
     """
     total_mass = big_mass * units.M_sun + small_mass * units.M_earth
     const = constants.G*(total_mass)/(4.0*np.pi**2)
-    if period: return np.cbrt(const*(period*units.day)**2).to("AU").value
-    if sep:    return np.sqrt((sep*units.au)**3/const).to("day").value
+    if period:
+        return np.cbrt(const*(period*units.day)**2).to("AU").value
+    if sep:
+        return np.sqrt((sep*units.au)**3/const).to("day").value
     raise ValueError("Specify either orbital period or separation")
 
 
@@ -205,17 +220,18 @@ def rossby_number(
     rossby  : float, rossby number
     """
     vk_bounds = [1.1, 6.6]
-    if safe and not (vk_bounds[0] <= vkcolor <= vk_bounds[1]):
+    if safe and not vk_bounds[0] <= vkcolor <= vk_bounds[1]:
         raise ValueError(
             f"V-K color {vkcolor:3g} out of model bounds {vk_bounds}"
         )
-    if(vkcolor <= 3.5):
+    if vkcolor <= 3.5:
         turnover = 10**(0.73 + 0.22*vkcolor)
     else:
-        turnover = 10**(-2.16 + 1.5*vkcolor - 0.13*vkcolor**2)                     
+        turnover = 10**(-2.16 + 1.5*vkcolor - 0.13*vkcolor**2)
     rossby = prot/turnover
-    if full_out: return (rossby,turnover)
-    else:        return rossby
+    if full_out:
+        return (rossby,turnover)
+    return rossby
 
 
 def rossby_number_from_mass(
@@ -240,7 +256,7 @@ def rossby_number_from_mass(
     rossby  : float, rossby number
     """
     mass_bounds = [0.09, 1.36]
-    if safe and not (mass_bounds[0] < mass < mass_bounds[1]):
+    if safe and not mass_bounds[0] < mass < mass_bounds[1]:
         raise ValueError(f"Mass {mass} out of model bounds {mass_bounds}")
     log_t = 1.16 - 1.49 * np.log10(mass) - 0.54 * np.log10(mass)**2
     if full_out:
@@ -262,9 +278,8 @@ def jeans_parameter(mass:float, radius:float, lbol:float, sep:float) -> float:
     grav = constants.G
     mass_si = mass * constants.M_earth
     radius_si = radius * constants.R_earth
-    
+
     numerator   = grav * mass_si * hydrogen_mass
     denominator = constants.k_B * teq * radius_si
     jeans = numerator / denominator
     return jeans.value
-
