@@ -413,7 +413,8 @@ class Planet:
             if(new_mass <= state.mcore * env_limit_factor):
                 return 0.0
             state.mass = new_mass
-            state.fenv = (state.mass - state.mcore) / state.mass
+            # state.fenv = (state.mass - state.mcore) / state.mass
+            state.fenv = (state.mass - state.mcore) / state.mcore
             # Calculate renv
             state.renv = self.envelope_model(state, self.model_args)
             state.radius = state.rcore + state.renv
@@ -422,17 +423,15 @@ class Planet:
             drdt = (state.radius - prev_radius) / state.tstep
             return drdt
 
-        assert method in ["auto","linear"], "Only Euler's method is implemented!"
-        
         Planet._debug_print(
             f"Integrating from t={start:.2f} to t={end:.2f} Myr",
             f"with method '{method}'"
         )
         
+        assert method in ["auto","linear"], "Only Euler's method is implemented!"        
         integration_methods = dict(
             linear = [EulerIntegrator, dict(step_size=step)],
             auto   = [EulerIntegrator, dict(step_size=step)],
-            RK45   = [RK45Integrator , dict(max_step=step)],
         )
 
         integ_cls, integ_args = integration_methods[method]

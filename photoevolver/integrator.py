@@ -104,4 +104,3 @@ class EulerIntegrator(IntegratorBase):
 
     def running(self) -> bool:
         return self.run
-

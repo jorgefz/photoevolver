@@ -296,6 +296,70 @@ def massloss_salz16(state :EvoState, model_kw :dict) -> float:
     return massloss_energy_limited(state, kwargs)
 
 
+
+def massloss_kubyshkina18_approx(state :EvoState, model_kw :dict) -> float:
+    """
+    Calculates the atmospheric mass loss rate driven by photoevaporation
+    This is based on the hydrodynamic models by Kubyshkina et al (2018)
+
+    Parameters
+    ----------
+        mass   : float, planet mass in Earth masses
+        radius : float, planet radius in Earth radii
+        Lxuv   : float, XUV luminosity of the star in erg/s
+        Lbol   : float, bolometric luminosity in erg/s
+        dist   : float, planet-star separation in AU
+        
+    Returns
+    -------
+        mloss  : float, mass loss rate in grams/sec
+
+    """
+    bounds = {
+        "radius": [1.0,  39.0],
+        "mass":   [1.0,  10.0],
+        "Lxuv":   [1e26, 5e30],
+        "Lbol":   [1.0,  1e40],
+        "dist":   [0.002, 1.3]
+    }
+
+    large_delta = {
+        'beta':  16.4084,
+        'alpha': [1.0, -3.2861, 2.75],
+        'zeta':  -1.2978,
+        'theta': 0.8846
+    }
+    small_delta = {
+        'beta': 32.0199,
+        'alpha': [0.4222, -1.7489, 3.7679],
+        'zeta': -6.8618,
+        'theta': 0.0095
+    }
+
+    def get_epsilon(radius:float, fxuv:float, sep:float) -> float:
+        """ Calculates model parameter `Epsilon` """
+        numerator = 15.611 - 0.578*np.log(fxuv)
+        numerator += 1.537*np.log(sep) + 1.018*np.log(radius)
+        denominator = 5.564 + 0.894*np.log(sep)
+        return numerator / denominator
+    
+    lxuv = state.lx + state.leuv
+    fxuv = physics.get_flux(lxuv, state.sep)
+
+    jeans = physics.jeans_parameter(
+        state.mass, state.radius, state.lbol, state.sep)
+    eps = get_epsilon(state.radius, fxuv, state.sep) 
+    par = small_delta if jeans < np.exp(eps) else large_delta
+    kappa = par['zeta'] + par['theta'] * np.log(state.sep)
+
+    mloss  =  np.exp(par['beta'])
+    mloss *= (fxuv)**(par['alpha'][0])
+    mloss *= (state.sep)**(par['alpha'][1])
+    mloss *= (state.radius)**(par['alpha'][2])
+    mloss *= (jeans)**kappa
+    return mloss
+
+
 @np.vectorize
 def euv_king18(
         lx     : float,

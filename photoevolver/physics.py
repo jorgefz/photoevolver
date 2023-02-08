@@ -251,3 +251,20 @@ def rossby_number_from_mass(
 def xray_hardness(hard :float, soft :float) -> float:
     """ Returns the hardness ratio of high and low energu X-ray counts"""
     return (hard - soft)/(hard + soft)
+
+
+def jeans_parameter(mass:float, radius:float, lbol:float, sep:float) -> float:
+    """ Returns the jeans escape parameter, which quantifies
+    how well bound an atmosphere is to a planet """
+    fbol = get_flux(lbol, sep)
+    teq  = temp_eq(fbol) * units.K
+    hydrogen_mass = constants.m_p.value + constants.m_e.value
+    grav = constants.G
+    mass_si = mass * constants.M_earth
+    radius_si = radius * constants.R_earth
+    
+    numerator   = grav * mass_si * hydrogen_mass
+    denominator = constants.k_B * teq * radius_si
+    jeans = numerator / denominator
+    return jeans.value
+
