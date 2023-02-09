@@ -271,10 +271,22 @@ def xray_hardness(hard :float, soft :float) -> float:
 
 def jeans_parameter(mass:float, radius:float, lbol:float, sep:float) -> float:
     """ Returns the jeans escape parameter, which quantifies
-    how well bound an atmosphere is to a planet """
+    how well bound an atmosphere is to a planet
+    
+    Parameters
+    ----------
+    mass    : float, planet mass in Earth masses.
+    radius  : float, planet radius in Earth radii.
+    lbol    : float, host star bolometric luminosity in erg/s.
+    sep     : float, orbital distance of the planet in AU.
+
+    Returns
+    -------
+    jeans   : float, jeans escape parameter (dimensionless)
+    """
     fbol = get_flux(lbol, sep)
     teq  = temp_eq(fbol) * units.K
-    hydrogen_mass = constants.m_p.value + constants.m_e.value
+    hydrogen_mass = constants.m_p + constants.m_e
     grav = constants.G
     mass_si = mass * constants.M_earth
     radius_si = radius * constants.R_earth
@@ -283,3 +295,17 @@ def jeans_parameter(mass:float, radius:float, lbol:float, sep:float) -> float:
     denominator = constants.k_B * teq * radius_si
     jeans = numerator / denominator
     return jeans.value
+
+
+def get_fenv_planet_ratio(xenv :float) -> float:
+    """ Returns the envelope to planet mass fraction (Menv / Mplanet)
+    from the envelope mass to core mass fraction (Menv / Mcore)
+    """
+    return 1-1/(xenv+1)
+
+
+def get_fenv_core_ratio(fenv :float) -> float:
+    """ Returns the envelope to core mass fraction (Menv / Mcore)
+    from the envelope to planet mass fraction (Menv / Mplanet)
+    """
+    return -1+1/(1-fenv)
