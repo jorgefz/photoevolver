@@ -30,7 +30,7 @@ def indexable(obj :typing.Any) -> bool:
 @contextlib.contextmanager
 def supress_stdout():
     """ Supresses write calls to stdout """
-    with open(os.devnull, "wb") as null:
+    with open(os.devnull, "w", encoding="utf-8") as null:
         with contextlib.redirect_stdout(null):
             yield
 

@@ -40,7 +40,7 @@ def test_indexable():
     assert utils.indexable({})
     assert not utils.indexable(0)
 
-    mock_class = type()
+    mock_class = type('Mock', (object,), {})
     assert not utils.indexable(mock_class())
 
     def mock_get_item(self, index):
@@ -57,7 +57,7 @@ def test_suppress_stdout(capfd):
 
 def test_is_mors_star():
     """ Tests photoevolver.utils.is_mors_star """
-    mock_class = type()
+    mock_class = type('Mock', (object,), {})
     assert not utils.is_mors_star({})
     assert not utils.is_mors_star(mock_class())
 
