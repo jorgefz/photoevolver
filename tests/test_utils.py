@@ -1,63 +1,91 @@
-import numpy as np
+"""
+Tests functions from photoevolver.utils
+"""
+
 import sys
 import pytest
-import importlib
+import numpy as np
 
 from photoevolver import utils
 
 def test_kprint(capfd):
-    values = dict(a=1, b=2)
+    """ Tests photoevolver.utils.kprint """
+    values = {'a':1, 'b':2}
     result = "a = 1\n" + "b = 2\n\n"
     utils.kprint(**values)
-    out, err = capfd.readouterr()
+    out, _ = capfd.readouterr()
     assert out == result
 
 def test_ezip():
-    xd = 1,2,3,4,5
-    yd = 9,8,7,6,5
-    for i,(x,y) in utils.ezip(xd, yd):
-        assert xd[i] == x and yd[i] == y
+    """ Tests photoevolver.utils.ezip """
+    x_data = 1,2,3,4,5
+    y_data = 9,8,7,6,5
+    for i, (x_value, y_value) in utils.ezip(x_data, y_data):
+        assert x_data[i] == x_value
+        assert y_data[i] == y_value
 
 def test_ezip_r():
-    xd = 1,2,3,4,5
-    yd = 9,8,7,6,5
-    for i,(x,y) in utils.ezip_r(xd, yd):
-        assert xd[len(xd)-i-1] == x and yd[len(yd)-i-1] == y
+    """ Tests photoevolver.utils.ezip_r """
+    x_data = 1,2,3,4,5
+    y_data = 9,8,7,6,5
+    for i, (x_value, y_value) in utils.ezip_r(x_data, y_data):
+        inds = len(x_data)-i-1, len(y_data)-i-1
+        assert x_data[inds[0]] == x_value
+        assert y_data[inds[1]] == y_value
 
 def test_indexable():
-    assert utils.indexable(list([1,2,3,4]))
-    assert utils.indexable(list())
-    assert utils.indexable(dict())
-    assert not utils.indexable(int())
-    class Mock: pass
-    assert not utils.indexable(Mock())
-    Mock.__getitem__ = lambda self,i: ...
-    assert utils.indexable(Mock())
+    """ Tests photoevolver.utils.indexable """
+    assert utils.indexable([1,2,3,4])
+    assert utils.indexable([])
+    assert utils.indexable({})
+    assert not utils.indexable(0)
+
+    mock_class = type()
+    assert not utils.indexable(mock_class())
+
+    def mock_get_item(self, index):
+        return self,index
+    mock_class.__getitem__ = mock_get_item
+    assert utils.indexable(mock_class())
+
+def test_suppress_stdout(capfd):
+    """ Tests photoevolver.utils.suppress_stdout """
+    with utils.supress_stdout():
+        print("hello")
+        out, _ = capfd.readouterr()
+        assert out == ""
 
 def test_is_mors_star():
-
-    class MockType: pass
-    assert not utils.is_mors_star(dict())
-    assert not utils.is_mors_star(MockType())
+    """ Tests photoevolver.utils.is_mors_star """
+    mock_class = type()
+    assert not utils.is_mors_star({})
+    assert not utils.is_mors_star(mock_class())
 
     # Inject fake module into import path
     # so that `import Mors` gives you a mock module
     ModuleType = type(sys)
-    Mors = ModuleType('Mors')
-    sys.modules['Mors'] = Mors
+    mors_module = ModuleType('Mors')
+    sys.modules['Mors'] = mors_module
 
     # Substitute Star class to speed up check
-    Mors.Star = MockType
-    assert utils.is_mors_star(Mors.Star())
+    mors_module.Star = mock_class
+    assert utils.is_mors_star(mors_module.Star())
+
+    # Remove Mors module altogether to test import error
+    del sys.modules['Mors']
+    assert not utils.is_mors_star(mors_module.Star())
 
 def test_rebin_array():
+    """ Tests photoevolver.utils.rebin_array """
     # Compare array that splits perfectly
     data = np.array([1,2,3, 1,2,3])
     result = utils.rebin_array(data, 3)
     expected = [6,6] # COVERAGE MISS ??
     assert np.isclose(result, expected).all()
 
-    linear_combination = lambda arr: np.sqrt(np.square(arr).sum())
+    def linear_combination(arr :list[float]) -> float:
+        return np.sqrt(np.square(arr).sum())
+
     result = utils.rebin_array(data, 3, linear_combination)
     expect = np.sqrt([14, 14])
     assert np.isclose(result, expect).all()
@@ -75,6 +103,3 @@ def test_rebin_array():
     # Wrong input
     with pytest.raises(ValueError):
         utils.rebin_array(data, 0)
-    
-
-    

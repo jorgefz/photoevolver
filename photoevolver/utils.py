@@ -1,7 +1,11 @@
-import numpy as np
+"""
+Utility functions
+"""
 import typing
 import contextlib
 import os
+import numpy as np
+
 
 def kprint(**kwargs) -> None:
     """Prints keyword arguments in new lines"""
@@ -26,7 +30,7 @@ def indexable(obj :typing.Any) -> bool:
 @contextlib.contextmanager
 def supress_stdout():
     """ Supresses write calls to stdout """
-    with open(os.devnull, "w") as null:
+    with open(os.devnull, "wb") as null:
         with contextlib.redirect_stdout(null):
             yield
 
@@ -61,13 +65,13 @@ def rebin_array(
     binned  : numpy.array, binned array
     """
     factor = int(factor)
-    if(factor <= 1):
+    if factor <= 1:
         raise ValueError("binning factor must be an integer greater than 1")
     leftover = len(arr) % factor # Extra values that don't fit reshape
     leftover_ind = len(arr) - leftover
     ndata = arr[:leftover_ind].reshape((len(arr)//factor, factor))
     ndata = np.array(list(map(func, ndata)))
     # Append leftover
-    if (leftover > 0):
+    if leftover > 0:
         ndata = np.append(ndata, func(arr[leftover_ind:]))
     return ndata
