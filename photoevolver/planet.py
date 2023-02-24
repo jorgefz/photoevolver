@@ -156,7 +156,7 @@ def solve_planet_from_mass_radius(
         return renv1 - renv2
     
     if model_kw is None:
-        model_kw = dict()
+        model_kw = {}
     solution = scipy_leastsq(
         fun = diff_fn,  x0 = fenv_guess, bounds = [0.0, 1.0],
         kwargs = dict(
@@ -290,7 +290,11 @@ class Planet:
             f"'{core_model.__name__}' for the core",
         )
     
-    def solve_structure(self, age :float) -> EvoState:
+    def solve_structure(
+            self,
+            age    :float,
+            errors :bool = False
+        ) -> EvoState:
         """
         Solves for the internal structure of the planet
         assuming a core and envelope as distinct layers,
@@ -301,7 +305,7 @@ class Planet:
         assert self.star_model and self.envelope_model and self.core_model, \
             "Models have not been set!"
 
-        state       = self.initial_state
+        state       = self.initial_state.copy()
         state.mstar = self.star_model['mass']
         state.age   = age
         state.lx    = self.star_model['lx'](state,self.model_args)
@@ -330,8 +334,8 @@ class Planet:
         if state.mass and state.radius:
             assert state.mass   > 0.0, "Planet mass must be over zero"
             assert state.radius > 0.0, "Planet radius must be over zero"
-            self._solve_from_mass_radius(state)
-            return state.copy()
+            self._solve_from_mass_radius(state, errors=errors)
+            return state
         
         # Core and fenv scenario
         elif (state.mcore or state.rcore) and state.fenv:
@@ -349,7 +353,7 @@ class Planet:
                 raise ValueError("Specify either core mass or core radius")
             assert state.fenv > 0.0, "Envelope mass must be over zero"
             self._solve_from_core_fenv(state)
-            return state.copy()
+            return state
         
         else:
             raise ValueError(
@@ -411,6 +415,9 @@ class Planet:
             # Update mass and fenv
             new_mass = state.mass - direction * mloss * state.tstep
             if(new_mass <= state.mcore * env_limit_factor):
+                state.radius = state.rcore
+                state.mass = state.mcore
+                evo_states.append(state.copy())
                 return 0.0
             state.mass = new_mass
             # state.fenv = (state.mass - state.mcore) / state.mass
@@ -482,7 +489,11 @@ class Planet:
         
         raise NotImplementedError("Invalid format for stellar model")
     
-    def _solve_from_mass_radius(self, state :EvoState) -> EvoState:
+    def _solve_from_mass_radius(
+            self,
+            state  :EvoState,
+            errors :bool=False
+        ) -> EvoState:
         """ Internal helper to solve the planet's structure from its
         measured mass and radius alone """
         # Assume mass and radius are provided
@@ -491,7 +502,8 @@ class Planet:
             env_model  = self.envelope_model,
             core_model = self.core_model,
             fenv_guess = 0.01,
-            model_kw   = self.model_args
+            model_kw   = self.model_args,
+            errors     = errors
         )
         Planet._debug_print(f"Mass-radius solver converged... {success}")
         return state
