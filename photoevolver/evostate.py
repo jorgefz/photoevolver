@@ -80,6 +80,10 @@ class EvoState:
         """
         return dataclass.asdict(self.copy())
 
+    def update(self, new_values :dict) -> 'EvoState':
+        """Returns a new instance replacing fields with given values"""
+        return dataclass.replace(self, **new_values)
+
     def validate(self) -> bool:
         """
         Returns True if all of the instance parameters are valid floats

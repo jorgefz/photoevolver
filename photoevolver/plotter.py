@@ -71,14 +71,14 @@ def CustomLegend(*elements :dict, panel :Any = None, **kwargs) -> NoReturn:
 def XTicks(
         ticks    :list[float] = None,
         panel    :Any = None,
-        fontsize :float = np.nan
+        fontsize :float = None
     ) -> NoReturn:
     """Sets the X axis tick labels and/or label fontsize"""
     if panel is None: panel = plt.gca()
     if ticks:
         panel.set_xticks(ticks)
         panel.get_xaxis().set_major_formatter(mpl.ticker.ScalarFormatter())
-    if ~np.isnan(fontsize):
+    if fontsize is not None:
         panel.tick_params(axis='x', which='both', labelsize=fontsize)
 
 def YTicks(
@@ -91,7 +91,7 @@ def YTicks(
     if ticks:
         panel.set_yticks(ticks)
         panel.get_yaxis().set_major_formatter(mpl.ticker.ScalarFormatter())
-    if fontsize is None:
+    if fontsize is not None:
         panel.tick_params(axis='y', which='both', labelsize=fontsize)
 
 def PanelTicks(

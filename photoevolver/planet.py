@@ -14,7 +14,7 @@ from scipy.optimize import (
 import tqdm
 
 from . import physics, utils
-from .integrator import *
+from .integrator import EulerIntegrator, RK45Integrator
 from .evostate import EvoState
 
 
@@ -289,6 +289,16 @@ class Planet:
             f"'{mass_loss_model.__name__}' for mass loss, and",
             f"'{core_model.__name__}' for the core",
         )
+
+    def use_models(self, other: 'Planet') -> typing.NoReturn:
+        """ Copies planet and stellar models from another Planet instance"""
+        self.set_models(
+            star_model = other.star_model,
+            envelope_model = other.envelope_model,
+            mass_loss_model = other.mass_loss_model,
+            core_model = other.core_model,
+            model_args = other.model_args
+        )
     
     def solve_structure(
             self,
@@ -365,7 +375,7 @@ class Planet:
             self,
             start  :float,
             end    :float,
-            method :str = "auto",
+            method :str = None,
             step   :str = 0.01,
             progressbar : bool = False,
             **kwargs
@@ -400,58 +410,41 @@ class Planet:
 
         evo_states :list[EvoState] = []
         evo_states.append(state.copy())
-        mloss_conv = (units.g / units.s).to("M_earth/Myr")
-        env_limit_factor = (1 + 1e-5)
-
-        def step_fn(age :float, prev_radius :float, **kw) -> float:
-            # Update age, lx, leuv, lbol
-            direction = 1 if (age > state.age) else -1
-            state.age = age
-            state.lx   = self.star_model['lx'](state, self.model_args)
-            state.leuv = self.star_model['leuv'](state, self.model_args)
-            state.lbol = self.star_model['lbol'](state, self.model_args)
-            # Calculate mloss
-            mloss = mloss_conv * self.mass_loss_model(state, self.model_args)
-            # Update mass and fenv
-            new_mass = state.mass - direction * mloss * state.tstep
-            if(new_mass <= state.mcore * env_limit_factor):
-                state.radius = state.rcore
-                state.mass = state.mcore
-                evo_states.append(state.copy())
-                return 0.0
-            state.mass = new_mass
-            # state.fenv = (state.mass - state.mcore) / state.mass
-            state.fenv = (state.mass - state.mcore) / state.mcore
-            # Calculate renv
-            state.renv = self.envelope_model(state, self.model_args)
-            state.radius = state.rcore + state.renv
-            # Save state
-            evo_states.append(state.copy())
-            drdt = (state.radius - prev_radius) / state.tstep
-            return drdt
+        env_limit = 1 + 1e-5
 
         Planet._debug_print(
             f"Integrating from t={start:.2f} to t={end:.2f} Myr",
             f"with method '{method}'"
         )
-        
-        assert method in ["auto","linear"], "Only Euler's method is implemented!"        
-        integration_methods = dict(
-            linear = [EulerIntegrator, dict(step_size=step)],
-            auto   = [EulerIntegrator, dict(step_size=step)],
-        )
 
-        integ_cls, integ_args = integration_methods[method]
+        # Choose integration method
+        integ_methods = {
+            'euler': [EulerIntegrator, {'step_size': step}],
+            'rk45' : [RK45Integrator,  {'first_step': step}],
+        }
 
+        if method is None:
+            method = "euler"
+        assert method in integ_methods, \
+              f"Unknown integration method. " \
+            + f"Available methods: {list(integ_methods.keys())}"
+        integ_cls, integ_args = integ_methods[method]
+
+        # Run integration
+        step_fn = lambda t,s,**kw: self._integration_step(t,s,**kw)
         integrator :IntegratorBase = integ_cls(
-            fun = step_fn, y_start = state.radius,
-            t_start = start, t_end = end,
-            progress = progressbar, **integ_args
+            func     = step_fn,
+            y_start  = state,
+            t_start  = start,
+            t_end    = end,
+            progress = progressbar,
+            func_kw  = {'env_limit': env_limit},
+            **integ_args
         )
         
         while(integrator.running()):
-            integrator.step()
-            state.tstep = integrator.step_size()
+            state = integrator.step()
+            evo_states.append(state.copy())
 
         Planet._debug_print(f"Finished integration")
         df = pd.DataFrame([state.asdict() for state in evo_states])
@@ -518,6 +511,37 @@ class Planet:
         state.mass = state.mcore / (1 - state.fenv)
         state.renv = self.envelope_model(state, self.model_args)
         state.radius = state.rcore + state.renv
+        return state
+
+    def _integration_step(self, age :float, old_state: EvoState, **kw) -> EvoState:
+        """
+        Computes a planet's state at a given age based on a previous state.
+        """
+        # Update X-ray and bolometric luminosities
+        state = old_state.copy()
+        direction = 1 if (age > state.age) else -1
+        state.age = age
+        state.lx   = self.star_model['lx'](state, self.model_args)
+        state.leuv = self.star_model['leuv'](state, self.model_args)
+        state.lbol = self.star_model['lbol'](state, self.model_args)
+
+        # Calculate mass loss rate
+        mloss_conv = (units.g / units.s).to("M_earth/Myr")
+        mloss = mloss_conv * self.mass_loss_model(state, self.model_args)
+
+        # Update envelope mass
+        new_mass = state.mass - direction * mloss * state.tstep
+        if(new_mass <= state.mcore * kw['env_limit']):
+            state.radius = state.rcore
+            state.mass = state.mcore
+            return state
+        state.mass = new_mass
+        state.fenv = (state.mass - state.mcore) / state.mcore
+
+        # Calculate envelope thickness
+        state.renv = self.envelope_model(state, self.model_args)
+        state.radius = state.rcore + state.renv
+
         return state
 
     ###################
