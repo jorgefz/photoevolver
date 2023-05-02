@@ -15,7 +15,7 @@ import tqdm
 
 from . import physics, utils
 from .integrator import EulerIntegrator, RK45Integrator
-from .evostate import EvoState
+from .evostate import EvoState, wrap_callback
 
 
 def solve_core_model(
@@ -225,9 +225,9 @@ class Planet:
 
     def set_models(self,
             star_model      :dict|typing.Any,
-            envelope_model  :typing.Callable[[EvoState,dict],float],
-            mass_loss_model :typing.Callable[[EvoState,dict],float],
-            core_model      :typing.Callable[[EvoState,dict],float],
+            envelope_model  :typing.Callable[..., float],
+            mass_loss_model :typing.Callable[..., float],
+            core_model      :typing.Callable[..., float],
             model_args      :dict = None
         ) -> typing.NoReturn:
         """
@@ -269,7 +269,7 @@ class Planet:
         if model_args is None: model_args = dict()
         self.star_model = self._parse_star(star_model)
         Planet._debug_print(
-            f"Using star model with {self.star_model['mass']} solar masses",
+            f"Using star model with {self.star_model['mass']:.2f} solar masses",
         )
         
         # Validate planet models
@@ -279,9 +279,9 @@ class Planet:
             callable(core_model)
         ])
         assert models_valid, "Invalid model"
-        self.envelope_model  = envelope_model
-        self.mass_loss_model = mass_loss_model
-        self.core_model      = core_model
+        self.envelope_model  = wrap_callback(envelope_model)
+        self.mass_loss_model = wrap_callback(mass_loss_model)
+        self.core_model      = wrap_callback(core_model)
         self.model_args      = model_args
         Planet._debug_print(
             "Using models",
@@ -292,13 +292,11 @@ class Planet:
 
     def use_models(self, other: 'Planet') -> typing.NoReturn:
         """ Copies planet and stellar models from another Planet instance"""
-        self.set_models(
-            star_model = other.star_model,
-            envelope_model = other.envelope_model,
-            mass_loss_model = other.mass_loss_model,
-            core_model = other.core_model,
-            model_args = other.model_args
-        )
+        self.star_model      = other.star_model
+        self.envelope_model  = other.envelope_model
+        self.mass_loss_model = other.mass_loss_model
+        self.core_model      = other.core_model
+        self.model_args      = other.model_args
     
     def solve_structure(
             self,
@@ -389,9 +387,13 @@ class Planet:
         start, end  : float
             Initial and final age bounds for the simulation in Myr.
         method      : str | IntegratorBase, optional
-            Integration method: "linear", "RK45" or "auto".
+            Integration method: "euler", or "rk45".
+            'euler' : forward Euler method with a fixed step size.
+            'rk45'  : 4th order Runge-Kutta method.
         step        : float
-            Step size for the integration, passed to the integrator.
+            Step size for the integration.
+            For the euler method, thi is the fixed step size.
+            For the RK45 method, this is the initial step size.
         progressbar : bool
             Displays a progress bar of the simulation using the `tqdm` module.
 
@@ -418,17 +420,17 @@ class Planet:
         )
 
         # Choose integration method
-        integ_methods = {
+        integration_methods = {
             'euler': [EulerIntegrator, {'step_size': step}],
-            'rk45' : [RK45Integrator,  {'first_step': step}],
+            'rk45' : [RK45Integrator,  {'first_step': step, 'max_step':1.0}],
         }
 
         if method is None:
             method = "euler"
-        assert method in integ_methods, \
+        assert method in integration_methods, \
               f"Unknown integration method. " \
-            + f"Available methods: {list(integ_methods.keys())}"
-        integ_cls, integ_args = integ_methods[method]
+            + f"Available methods: {list(integration_methods.keys())}"
+        integ_cls, integ_args = integration_methods[method]
 
         # Run integration
         step_fn = lambda t,s,**kw: self._integration_step(t,s,**kw)
@@ -517,10 +519,12 @@ class Planet:
         """
         Computes a planet's state at a given age based on a previous state.
         """
-        # Update X-ray and bolometric luminosities
+        kw['env_limit'] = kw.get('env_limit', 1+1e-5)
         state = old_state.copy()
         direction = 1 if (age > state.age) else -1
         state.age = age
+
+        # Update X-ray and bolometric luminosities
         state.lx   = self.star_model['lx'](state, self.model_args)
         state.leuv = self.star_model['leuv'](state, self.model_args)
         state.lbol = self.star_model['lbol'](state, self.model_args)

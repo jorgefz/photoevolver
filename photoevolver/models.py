@@ -8,12 +8,13 @@ import contextlib
 import numpy as np
 import uncertainties as uncert
 from uncertainties import umath
-
-from .evostate import EvoState
 from . import physics, utils
 
-
-def core_otegi20(state :EvoState, model_kw :dict) -> float|uncert.UFloat:
+def core_otegi20(
+        mcore :float,
+        ot20_errors :bool = False,
+        **kwargs
+    ) -> float|uncert.UFloat:
     """
     Calculates the radius of the planet's core using the relations
     by Otegi et a. (2020) based on an empirical fit to planet populations.
@@ -29,17 +30,25 @@ def core_otegi20(state :EvoState, model_kw :dict) -> float|uncert.UFloat:
             if errors are enabled, and a python float otherwise.
     """
     bounds = [0.0, 100.0]
-    if not state.mcore or umath.isnan(state.mcore) or state.mcore<=0:
-        raise ValueError("Invalid core mass")
+    if not mcore or umath.isnan(mcore) or mcore<=0:
+        raise ValueError(f"[core_otegi20] Invalid core mass ({bounds})")
     scaling = uncert.ufloat(1.03, 0.02)
     exponent = uncert.ufloat(0.29, 0.01)
-    rcore = scaling * state.mcore ** exponent
-    if not model_kw.get('ot20_errors', False):
+    rcore = scaling * mcore ** exponent
+    if not ot20_errors:
         return rcore.nominal_value
     return rcore
 
 
-def envelope_lopez14(state :EvoState, model_kw :dict) -> float:
+def envelope_lopez14(
+        mass :float,
+        fenv :float,
+        lbol :float,
+        sep  :float,
+        age  :float,
+        lf14_opaque :bool = False,
+        **kwargs
+    ) -> float:
     """
     Returns the envelope thickness in Earth radii using the model
     by Lopez & Fortney (2014).
@@ -69,23 +78,31 @@ def envelope_lopez14(state :EvoState, model_kw :dict) -> float:
     }
     
     age_power = -0.11 # solar metallicity
-    if model_kw.get("lf14_opaque", False):
+    if lf14_opaque:
         age_power = -0.18 # enhanced opacity
 
     # Simulation uses fenv = (mass-mcore)/mcore
     # This model uses fenv2 = (mass-mcore)/mass
-    fenv2 = state.fenv / (state.fenv + 1)
-    fbol = physics.get_flux(lum=state.lbol, dist_au=state.sep)
+    fenv2 = fenv / (fenv + 1)
+    fbol = physics.get_flux(lum=lbol, dist_au=sep)
     
-    mass_term = 2.06 * ( state.mass )**(-0.21)
+    mass_term = 2.06 * ( mass )**(-0.21)
     flux_term = ( physics.SI_flux(fbol/physics.fbol_earth()) )**(0.044)
-    age_term  = ( state.age/5000 )**(age_power)
+    age_term  = ( age/5000 )**(age_power)
     fenv_term = ( fenv2/0.05)**(0.59)
     renv = mass_term * fenv_term * flux_term * age_term
     return renv
 
 
-def envelope_chen16(state :EvoState, model_kw :dict) -> float:
+def envelope_chen16(
+        mass :float,
+        fenv :float,
+        lbol :float,
+        sep  :float,
+        age  :float,
+        cr16_water : bool = False,
+        **kwargs
+    ) -> float:
     """
     Returns the envelope thickness in Earth radii using the 
     analytical approximation to the MESA model by Chen & Rogers (2016).
@@ -99,7 +116,7 @@ def envelope_chen16(state :EvoState, model_kw :dict) -> float:
     lbol   : float, bolometric luminosity of the hos star (erg/s/cm^2)
     sep    : float, orbital separation of the planet in AU
     age    : float, system age in Myr
-    c16_water : bool (optional), use coefficients for a water core.
+    cr16_water : bool (optional), use coefficients for a water core.
 
     Returns
     -------
@@ -124,7 +141,7 @@ def envelope_chen16(state :EvoState, model_kw :dict) -> float:
         [ 0.000, 0.000,  0.052,  0.031],
         [ 0.000, 0.000,  0.000, -0.009]
     ])
-    if model_kw.get("c16_water", False):
+    if cr16_water:
         c0 = 0.169
         c1 = np.array([-0.436, 0.572,  0.154, -0.173])
         c2 = np.array([
@@ -136,15 +153,15 @@ def envelope_chen16(state :EvoState, model_kw :dict) -> float:
 
     # Simulation uses fenv = (mass-mcore)/mcore
     # This model uses fenv2 = (mass-mcore)/mass
-    fenv2 = state.fenv / (state.fenv + 1)
-    fbol = physics.get_flux(lum=state.lbol, dist_au=state.sep)
+    fenv2 = fenv / (fenv + 1)
+    fbol = physics.get_flux(lum=lbol, dist_au=sep)
     fbol_term = physics.SI_flux(fbol)/physics.SI_flux(physics.fbol_earth())
 
     terms = np.array([
-        np.log10( state.mass ),
+        np.log10( mass ),
         np.log10( fenv2/0.05 ),
         np.log10( fbol_term ),
-        np.log10( state.age/5000.0 )
+        np.log10( age/5000.0 )
     ])
     # zeroth oder
     log_renv :float = c0
@@ -155,7 +172,14 @@ def envelope_chen16(state :EvoState, model_kw :dict) -> float:
     return 10**log_renv
 
 
-def envelope_owen17(state :EvoState, model_kw :dict) -> float:
+def envelope_owen17(
+        mass :float,
+        fenv :float,
+        lbol :float,
+        sep  :float,
+        age  :float,
+        **kwargs
+    ) -> float:
     """
     Returns the envelope thickness in Earth radii using the 
     analytical model by Owen & Wu (2017).
@@ -177,7 +201,17 @@ def envelope_owen17(state :EvoState, model_kw :dict) -> float:
     raise NotImplementedError("envelope_owen17 not yet implemented")
 
 
-def massloss_energy_limited(state :EvoState, model_kw :dict) -> float:
+def massloss_energy_limited(
+    lx     :float,
+    leuv   :float,
+    mstar  :float,
+    mass   :float,
+    radius :float,
+    sep    :float,
+    el_eff  :float = 0.15,
+    el_rxuv :float = 1.0,
+    **kwargs
+    ) -> float:
     """
     Returns the mass loss rate from a planet using the
     energy-limited model.
@@ -186,7 +220,8 @@ def massloss_energy_limited(state :EvoState, model_kw :dict) -> float:
 
     Parameters
     ----------
-    lxuv    : float, XUV luminosity from the star in erg/s
+    lx      : float, X-ray luminosity of the star in erg/s
+    leuv    : float, X-ray luminosity of the star in erg/s
     mstar   : float, Host star mass in Solar masses
     mass    : float, planet mass in Earth masses
     radius  : float, planet radius in Earth radii
@@ -205,17 +240,16 @@ def massloss_energy_limited(state :EvoState, model_kw :dict) -> float:
     -------
     mloss  : float, mass loss rate in g/s
     """
-    lxuv   = (state.lx + state.leuv) * physics.units.erg.to('J')
-    fxuv   = physics.get_flux(lum=state.lx+state.leuv, dist_au=state.sep)
+    lxuv   = (lx + leuv) * physics.units.erg.to('J')
+    fxuv   = physics.get_flux(lum=lx+leuv, dist_au=sep)
     fxuv  *= physics.units.erg.to('J') / physics.units.cm.to('m')**2
-    mstar  = state.mstar  * physics.constants.M_sun.value
-    mass   = state.mass   * physics.constants.M_earth.value
-    radius = state.radius * physics.constants.R_earth.value
-    sep    = state.sep    * physics.units.au.to('m')
-    eff    = model_kw.get("el_eff", 0.15)
-    rxuv   = model_kw.get("el_rxuv", 1.0)
-    if callable(eff):  eff  = eff(state, model_kw)
-    if callable(rxuv): rxuv = rxuv(state, model_kw)
+    mstar  = mstar  * physics.constants.M_sun.value
+    mass   = mass   * physics.constants.M_earth.value
+    radius = radius * physics.constants.R_earth.value
+    sep    = sep    * physics.units.au.to('m')
+    kwargs.update(lx=lx, leuv=leuv, mstar=mstar, mass=mass, radius=radius, sep=sep)
+    eff  = el_eff(**kwargs)  if callable(el_eff)  else el_eff
+    rxuv = el_rxuv(**kwargs) if callable(el_rxuv) else el_rxuv
     grav_const = physics.constants.G.value
     
     xi = (sep/radius)*(mass/mstar/3)**(1/3)
@@ -224,7 +258,14 @@ def massloss_energy_limited(state :EvoState, model_kw :dict) -> float:
     return mloss * physics.units.kg.to('g')
 
 
-def rxuv_salz16(state :EvoState, model_kw :dict) -> float:
+def rxuv_salz16(
+        mass   :float,
+        radius :float,
+        lx     :float,
+        leuv   :float,
+        sep    :float,
+        **kwargs
+    ) -> float:
     """
     Returns the ratio of XUV to optical radius for a planet's envelope
     using the model of Salz et al. (2016).
@@ -235,13 +276,14 @@ def rxuv_salz16(state :EvoState, model_kw :dict) -> float:
     ----------
     mass    : float, planet mass in Earth masses
     radius  : float, planet radius in Earth radii
-    lxuv    : float, XUV luminosity from the star in erg/s
+    lx      : float, X-ray luminosity of the star in erg/s
+    leuv    : float, X-ray luminosity of the star in erg/s
     sep     : float, orbital separation of the planet in AU
     """
-    fxuv = physics.get_flux(lum=state.lx+state.leuv, dist_au=state.sep)
+    fxuv = physics.get_flux(lum=lx+leuv, dist_au=sep)
     grav_cgs = physics.constants.G.to('erg*m/g^2').value
-    mass   = state.mass * physics.constants.M_earth.to('g').value
-    radius = state.mass * physics.constants.R_earth.to('m').value
+    mass   = mass * physics.constants.M_earth.to('g').value
+    radius = radius * physics.constants.R_earth.to('m').value
     gpot = grav_cgs * mass / radius
     log_beta = max(0.0, -0.185*np.log10(gpot) + 0.021*np.log10(fxuv) + 2.42)
     # upper limit to beta
@@ -249,7 +291,11 @@ def rxuv_salz16(state :EvoState, model_kw :dict) -> float:
     return 10**(log_beta)
 
 
-def efficiency_salz16(state :EvoState, model_kw :dict) -> float:
+def efficiency_salz16(
+        mass   :float,
+        radius :float,
+        **kwargs
+    ) -> float:
     """
     Returns the evaporation efficiency on a planet's envelope
     using the model of Salz et al. (2016).
@@ -262,8 +308,8 @@ def efficiency_salz16(state :EvoState, model_kw :dict) -> float:
     radius  : float, planet radius in Earth radii
     """
     grav_cgs = physics.constants.G.to('erg*m/g^2').value
-    mass   = state.mass * physics.constants.M_earth.to('g').value
-    radius = state.mass * physics.constants.R_earth.to('m').value
+    mass   = mass * physics.constants.M_earth.to('g').value
+    radius = radius * physics.constants.R_earth.to('m').value
     gpot = grav_cgs * mass / radius
     v = np.log10(potential)
     if   ( v < 12.0):           log_eff = np.log10(0.23) # constant
@@ -274,7 +320,15 @@ def efficiency_salz16(state :EvoState, model_kw :dict) -> float:
     return 10**(log_eff)*5/4 # Correction evaporation efficiency to heating efficiency
 
 
-def massloss_salz16(state :EvoState, model_kw :dict) -> float:
+def massloss_salz16(
+        lx     :float,
+        leuv   :float,
+        mstar  :float,
+        mass   :float,
+        radius :float,
+        sep    :float,
+        **kwargs
+    ) -> float:
     """
     Returns the mass loss rate from a planet using the
     energy-limited model with the approximation by
@@ -282,7 +336,8 @@ def massloss_salz16(state :EvoState, model_kw :dict) -> float:
     
     Parameters
     ----------
-    lxuv    : float, XUV luminosity from the star in erg/s
+    lx      : float, X-ray luminosity of the star in erg/s
+    leuv    : float, X-ray luminosity of the star in erg/s
     mstar   : float, Host star mass in Solar masses
     mass    : float, planet mass in Earth masses
     radius  : float, planet radius in Earth radii
@@ -292,23 +347,30 @@ def massloss_salz16(state :EvoState, model_kw :dict) -> float:
     -------
     mloss  : float, mass loss rate in g/s
     """
-    rxuv = rxuv_salz16(state, model_kw)
-    kwargs = model_kw.copy()
-    kwargs['el_rxuv'] = rxuv
-    return massloss_energy_limited(state, kwargs)
+    kwargs.update(mass=mass, radius=radius, lx=lx, leuv=leuv,
+        sep=sep, mstar=mstar)
+    kwargs['el_rxuv'] = rxuv_salz16(**kwargs)
+    return massloss_energy_limited(**kwargs)
 
 
-def massloss_kubyshkina18(state :EvoState, model_kw :dict) -> float:
+def massloss_kubyshkina18(
+        mass   :float,
+        radius :float,
+        leuv   :float,
+        lbol   :float,
+        sep    :float,
+        mstar  :float,
+        **kwargs
+    ) -> float:
     """ Calculates the mass loss rate using the hydrodynamic models
     and interpolator by Kubyshkina et al (2018). """
     from .K18grid import interpolator
     # INTERPOL(Mss,EUV,T_i,r_i,m_i, dataset_file = None)
     ## INPUT: Mstar [Msun], EUV [erg/cm/s], Teq [K], Rpl [Re], Mpl [Me]
-    feuv = physics.get_flux(state.leuv, dist_au=state.sep)
-    fbol = physics.get_flux(state.lbol, dist_au=state.sep)
-    teq = physics.temp_eq(fbol)
-    args = dict(Mss = state.mstar, EUV = feuv, T_i = teq,
-        r_i = state.radius, m_i = state.mass)
+    feuv = physics.get_flux(leuv, dist_au=sep)
+    fbol = physics.get_flux(lbol, dist_au=sep)
+    teq  = physics.temp_eq(fbol)
+    args = dict(Mss = mstar, EUV = feuv, T_i = teq, r_i = radius, m_i = mass)
 
     # Redirect stdout to avoid inteprolator messages clogging up buffer
     with utils.supress_stdout():
@@ -318,7 +380,15 @@ def massloss_kubyshkina18(state :EvoState, model_kw :dict) -> float:
     return mloss
 
 
-def massloss_kubyshkina18_approx(state :EvoState, model_kw :dict) -> float:
+def massloss_kubyshkina18_approx(
+        mass   :float,
+        radius :float,
+        lx     :float,
+        leuv   :float,
+        lbol   :float,
+        sep    :float,
+        **kwargs
+    ) -> float:
     """
     Calculates the atmospheric mass loss rate driven by photoevaporation
     This is based on the hydro-based expression by Kubyshkina et al (2018).
@@ -327,7 +397,8 @@ def massloss_kubyshkina18_approx(state :EvoState, model_kw :dict) -> float:
     ----------
         mass   : float, planet mass in Earth masses
         radius : float, planet radius in Earth radii
-        lxuv   : float, XUV luminosity of the star in erg/s
+        lx      : float, X-ray luminosity of the star in erg/s
+        leuv    : float, X-ray luminosity of the star in erg/s
         lbol   : float, bolometric luminosity in erg/s
         sep    : float, planet-star separation in AU
         
@@ -364,19 +435,18 @@ def massloss_kubyshkina18_approx(state :EvoState, model_kw :dict) -> float:
         denominator = 5.564 + 0.894*np.log(sep)
         return numerator / denominator
     
-    lxuv = state.lx + state.leuv
-    fxuv = physics.get_flux(lxuv, state.sep)
+    lxuv = lx + leuv
+    fxuv = physics.get_flux(lxuv, sep)
 
-    jeans = physics.jeans_parameter(
-        state.mass, state.radius, state.lbol, state.sep)
-    eps = get_epsilon(state.radius, fxuv, state.sep) 
+    jeans = physics.jeans_parameter(mass, radius, lbol, sep)
+    eps = get_epsilon(radius, fxuv, sep) 
     par = small_delta if jeans < np.exp(eps) else large_delta
-    kappa = par['zeta'] + par['theta'] * np.log(state.sep)
+    kappa = par['zeta'] + par['theta'] * np.log(sep)
 
     mloss  =  np.exp(par['beta'])
     mloss *= (fxuv)**(par['alpha'][0])
-    mloss *= (state.sep)**(par['alpha'][1])
-    mloss *= (state.radius)**(par['alpha'][2])
+    mloss *= (sep)**(par['alpha'][1])
+    mloss *= (radius)**(par['alpha'][2])
     mloss *= (jeans)**kappa
     return mloss
 

@@ -135,5 +135,5 @@ def wrap_callback(fn :typing.Callable[typing.Any,float]
     """
     wrapper = lambda state, model_kw: fn(**state.asdict(), **model_kw)
     wrapper.__name__ = fn.__name__
-    wrapper.__doc__ = fn.__doc__
+    wrapper.__doc__  = fn.__doc__
     return wrapper

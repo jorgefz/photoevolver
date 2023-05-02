@@ -144,7 +144,7 @@ class RK45Integrator(IntegratorBase):
 
         y = [self.state.asdict()[k] for k in self.integ_params]
         self.rk45 = ScipyRK45(
-            fun     = self.wrap_integrand(),
+            fun     = self._wrap_integrand(),
             y0      = y,
             t0      = self.t_start,
             t_bound = self.t_end,
@@ -153,7 +153,7 @@ class RK45Integrator(IntegratorBase):
         )
         self._init_pbar()
 
-    def wrap_integrand(self):
+    def _wrap_integrand(self):
         """
         Wraps the function to integrate, which takes a planet state
         and advances it by one time step, into the format used
@@ -184,7 +184,6 @@ class RK45Integrator(IntegratorBase):
             self._end_pbar()
             return self.state.copy()
         self._update_pbar()
-
         return self.state.copy()
 
     def step_size(self) -> float:
