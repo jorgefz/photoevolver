@@ -15,15 +15,16 @@ STAR = mors.Star(Mstar=1.0, percentile=50.0)
 """
 
 COVERAGE
-photoevolver/planet.py 50%
-    297-301
-    315-369
-    408-455
-    477-487
-    497-506
-    515-518
-    524-551
-    561
+photoevolver/planet.py 47%
+    359
+    367-371
+    385-439
+    478-525
+    537-557
+    567-576
+    585-588
+    594-621
+    631
 
 PROBLEMS
 
@@ -113,3 +114,123 @@ def test_solve_planet_from_mass_radius_uncert():
         "Core and envelope sizes are not consistent with given radius"
     assert np.isclose(solved.mass.n, solved.mcore.n * (1 + solved.fenv.n)), \
         "Core and envelope masses are not consistent with given mass"
+
+
+def test_planet_init():
+
+    mass = 5.0
+    radius = 2.0
+    planet = Planet(mass = mass, radius = radius)
+
+    assert planet.initial_state.mass == mass, \
+        "Mass parameter no saved on planet state"
+    assert planet.initial_state.radius == radius, \
+        "Radius parameter no saved on planet state"
+
+
+def test_planet_set_models():
+    planet = Planet(mass = 5.0, radius = 2.0)
+    planet.set_models(
+        star_model     = STAR,
+        envelope_model = models.envelope_chen16,
+        core_model     = models.core_otegi20,
+        mass_loss_model = models.massloss_energy_limited,
+        model_args = None
+    )
+
+    assert planet.envelope_model and planet.core_model, \
+        "Models not set on planet"
+    assert planet.star_model and planet.mass_loss_model, \
+        "Models not set on planet"
+    assert planet.model_args == {}, \
+        "Model args not set to empty dict by default"
+
+    # Check mass loss model defaults to function returning zero
+    planet.set_models(
+        star_model     = STAR,
+        envelope_model = models.envelope_chen16,
+        core_model     = models.core_otegi20,
+        mass_loss_model = None,
+    )
+
+    assert planet.mass_loss_model, \
+        "Default mass loss model not set"
+    assert planet.mass_loss_model(EvoState(), {}) == 0.0, \
+        "Default mass loss model does not return zero"
+
+
+def test_planet_use_models():
+    planet = Planet(mass = 5.0, radius = 2.0)
+    planet.set_models(
+        star_model     = STAR,
+        envelope_model = models.envelope_chen16,
+        core_model     = models.core_otegi20,
+        mass_loss_model = models.massloss_energy_limited,
+    )
+
+    planet2 = Planet(mass = 10.0, radius = 4.0)
+    planet2.use_models(planet)
+
+    assert planet2.star_model == planet.star_model \
+        and planet2.core_model == planet.core_model \
+        and planet2.envelope_model == planet.envelope_model \
+        and planet2.mass_loss_model == planet.mass_loss_model \
+        and planet2.model_args == planet.model_args, \
+        "Models not copied over"
+
+def test_planet_solve_structure():
+    # Solve with mass and radius
+    planet = Planet(mass = 10.0, radius = 4.0, sep = 0.1)
+    planet.set_models(
+        star_model     = STAR,
+        envelope_model = models.envelope_chen16,
+        core_model     = models.core_otegi20,
+    )
+    solved = planet.solve_structure(age = 100)
+    assert solved.mass == planet.initial_state.mass \
+        and solved.radius == planet.initial_state.radius, \
+        "Original parameters have changed on the solution"
+    assert np.isclose(solved.mass, solved.mcore * (1 + solved.fenv)), \
+        "Mass in solution not consistent with core and envelope masses"
+    assert np.isclose(solved.radius, solved.rcore + solved.renv), \
+        "Radius in solution not consistent with core and envelope sizes"
+
+    # Solve with rcore and fenv
+    planet = Planet(rcore = 1.5, fenv = 0.01, sep = 0.1)
+    planet.set_models(
+        star_model     = STAR,
+        envelope_model = models.envelope_chen16,
+        core_model     = models.core_otegi20,
+    )
+    solved = planet.solve_structure(age = 100)
+
+    print(solved.mass, solved.mcore * (1 + solved.fenv))
+
+    assert solved.rcore == planet.initial_state.rcore \
+        and solved.fenv == planet.initial_state.fenv, \
+        "Original parameters have changed on the solution"
+    assert np.isclose(solved.mass, solved.mcore * (1 + solved.fenv)), \
+        "Mass in solution not consistent with core and envelope masses"
+    assert np.isclose(solved.radius, solved.rcore + solved.renv), \
+        "Radius in solution not consistent with core and envelope sizes"
+
+    # Calculate separation from period
+    planet2 = Planet(mass = 10.0, radius = 4.0, period = 5.0)
+    planet2.use_models(planet)
+    solved = planet2.solve_structure(age = 100)
+    assert np.isclose(solved.sep, ph.physics.keplers_third_law(
+        big_mass=STAR.Mstar, period=5.0)), \
+        "Separation not consistent with period"
+
+    # Error when neither sep nor period given
+    planet2 = Planet(mass = 10.0, radius = 4.0)
+    planet2.use_models(planet)
+    with pytest.raises(ValueError):
+        planet2.solve_structure(age = 100)
+
+    # Error when not enough initial parameters defined
+    planet2 = Planet(mass = 10.0, mcore = 1.0)
+    planet2.use_models(planet)
+    with pytest.raises(ValueError):
+        planet2.solve_structure(age = 100)
+    

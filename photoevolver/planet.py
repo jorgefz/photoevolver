@@ -289,7 +289,7 @@ class Planet:
         self.envelope_model  :callable = None   # :Callable[params:float] -> float
         self.mass_loss_model :callable = None   # :Callable[params:float] -> float
         self.core_model      :callable = None   # :Callable[params:float] -> float
-        self.model_args      :dict     = None
+        self.model_args      :dict     = None   # :dict(Any)
     
     ###################
     # Public Methods  #
@@ -298,8 +298,8 @@ class Planet:
     def set_models(self,
             star_model      :dict|typing.Any,
             envelope_model  :typing.Callable[..., float],
-            mass_loss_model :typing.Callable[..., float],
             core_model      :typing.Callable[..., float],
+            mass_loss_model :typing.Callable[..., float] = None,
             model_args      :dict = None
         ) -> typing.NoReturn:
         """
@@ -328,13 +328,14 @@ class Planet:
         envelope  :Callable(EvoState,dict) -> float
             Envelope structure model. Calculates and returns the envelope thickness.
 
-        mass_loss :Callable(EvoState,dict) -> float
-            Calculates and returns the mass loss rate in grams/sec.
-
-        core_mr   :Callable(EvoState,dict) -> float
+        core_model :Callable(EvoState,dict) -> float
             Calculates and returns the core radius from its mass.
 
-        model_args :dict
+        mass_loss :Callable(EvoState,dict) -> float
+            Calculates and returns the mass loss rate in grams/sec.
+            Default is function that returns a mass loss of zero.
+
+        model_args :dict, optional
             Additional parameters passed to the models above.
         """
         # Validate stellar model
@@ -347,19 +348,26 @@ class Planet:
         # Validate planet models
         models_valid = all([
             callable(envelope_model),
-            callable(mass_loss_model),
             callable(core_model)
         ])
         assert models_valid, "Invalid model"
         self.envelope_model  = wrap_callback(envelope_model)
-        self.mass_loss_model = wrap_callback(mass_loss_model)
         self.core_model      = wrap_callback(core_model)
         self.model_args      = model_args
+
+        default_mloss = lambda *args, **kwargs: 0.0
+        default_mloss.__name__ = "default_mass_loss(*args,**kwargs) -> 0.0"
+
+        if mass_loss_model is None:
+            self.mass_loss_model = wrap_callback(default_mloss)
+        else:
+            self.mass_loss_model = wrap_callback(mass_loss_model)
+
         Planet._debug_print(
             "Using models",
-            f"'{envelope_model.__name__}' for the envelope,",
-            f"'{mass_loss_model.__name__}' for mass loss, and",
-            f"'{core_model.__name__}' for the core",
+            f"'{self.envelope_model.__name__}' for the envelope,",
+            f"'{self.mass_loss_model.__name__}' for mass loss, and",
+            f"'{self.core_model.__name__}' for the core",
         )
 
     def use_models(self, other: 'Planet') -> typing.NoReturn:
@@ -432,7 +440,7 @@ class Planet:
             else:
                 raise ValueError("Specify either core mass or core radius")
             assert state.fenv > 0.0, "Envelope mass must be over zero"
-            self._solve_from_core_fenv(state)
+            state = self._solve_from_core_fenv(state)
             return state
         
         else:
@@ -582,7 +590,7 @@ class Planet:
         Parameters:
             state   :EvoState, simulation state
         """
-        state.mass = state.mcore / (1 - state.fenv)
+        state.mass = state.mcore * (1 + state.fenv)
         state.renv = self.envelope_model(state, self.model_args)
         state.radius = state.rcore + state.renv
         return state
