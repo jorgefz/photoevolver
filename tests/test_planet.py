@@ -8,160 +8,108 @@ from photoevolver.evostate import EvoState, wrap_callback
 from uncertainties import ufloat, wrap as uwrap
 from scipy.optimize import least_squares as scipy_leastsq
 
-
-def model_unwrapper(fn):
-    """ model(state,kw) -> model(**kw) """
-    def wrapper(**kw):
-        state_keys = list(EvoState().asdict().keys())
-        state_dict = {k:v for k,v in kw.items() if k in state_keys}
-        state = EvoState.from_dict(state_dict)
-        model_kw = {k:v for k,v in kw.items() if k not in state_keys}
-        return fn(state, model_kw)
-    return wrapper
-
-def super_wrapper(fn):
-    return wrap_callback(uwrap(model_unwrapper(fn)))
-
-def _state_model_to_kw(state, model_kw):
-    return state.asdict().update(model_kw)
+# Generate sun-like stellar model once
+STAR = mors.Star(Mstar=1.0, percentile=50.0)
 
 
 """
+
+COVERAGE
+photoevolver/planet.py 50%
+    297-301
+    315-369
+    408-455
+    477-487
+    497-506
+    515-518
+    524-551
+    561
+
 PROBLEMS
 
-State has ucnertainties.
+State has uncertainties.
 State is passed everywhere, including model functions.
 Model functions cant accept uncertainties.
 Solver can't accept uncertainties.
 Uncertainties wrapper wont work if state already has ucnertainties.
 
 SOLUTIONS
-Make models accept arbitrary keywords.
-Wrap models with ucnertainty wrappers.
+Make models accept arbitrary keywords - DONE
+Wrap models with uncertainty wrappers.
 Convert state to dict before passing to models.
 
 """
 
 
-def _solve_planet_from_mass_radius(
-        state      :EvoState,
-        env_model  :callable,
-        core_model :callable,
-        fenv_guess :float = 0.01,
-        model_kw   :dict = None,
-        errors     :bool = False
-        ) -> list[EvoState,bool]:
-    
-    def diff_fn(x :list[float], *args, **kwargs) -> float:
-        """Returns the difference in envelope thicknesses
-        predicted by the core and envelope models"""
-        core_model, env_model = kwargs['core_model'], kwargs['env_model']
-        kwargs['fenv'] = x[0]
-        # Calculate envelope radius from mass-radius relation
-        kwargs['mcore'] = state.mass / (1.0 + kwargs['fenv'])
-        kwargs['rcore'] = core_model(**kwargs)
-        renv1 = kwargs['radius'] - kwargs['rcore']
-        # Calculate envelope radius from envelope structure formulation
-        renv2 = env_model(**kwargs)
-        return renv1 - renv2
-    
-    @uwrap
-    def solver_fn(**kwargs):
-        solution = scipy_leastsq(
-            fun = diff_fn,  x0 = fenv_guess, bounds = [0.0, 2.0],
-            kwargs = kwargs
-        )
-        return solution.x[0]
+def test_solve_core_model():
+    rcore = 1.0
+    guess = 1.0
+    mcore, success = ph.planet.solve_core_model(
+        core_model = wrap_callback(models.core_otegi20),
+        state = EvoState(rcore = rcore),
+        guess = guess
+    )
+    assert success, "Core model did not converge"
+    # Re-run core model with solution to ensure input and output are consistent
+    assert np.isclose(rcore, models.core_otegi20(mcore=mcore)), \
+        "Model output and model solution are not consistent"
 
-    if model_kw is None:
-        model_kw = {}
-    
-    solution = solver_fn(**state.asdict(), **model_kw,
-        env_model=env_model, core_model=core_model)
-    state.fenv = solution
-    state.mcore = state.mass / (1.0 + state.fenv)
-    state.rcore = core_model(**state.asdict(), **model_kw, ot20_errors=True)
-    state.renv = state.radius - state.rcore
-    # state.renv = uwrap(env_model)(**state.asdict(), **model_kw)
-    return state, True
+
+def test_solve_envelope_model():
+    # Chose envelope that roughly doubles planet size
+    guess = 1.0
+    state = EvoState(mcore = 1.0, renv = 1.0, lbol = 1e33, sep = 0.1, age = 100)
+    fenv, success = ph.planet.solve_envelope_model(
+        env_model = wrap_callback(models.envelope_chen16),
+        state = state,
+        guess = guess
+    )
+    assert success, "Envelope model failed to converge"
+    # Re-run core model with solution to ensure input and output are consistent
+    assert np.isclose(state.renv, models.envelope_chen16(
+            mass=state.mass, fenv=fenv, lbol=state.lbol, sep=state.sep, age=state.age
+        )), "Model output and model solution are not consistent"
 
 
 def test_solve_planet_from_mass_radius():
-    
-
-    star = mors.Star(Mstar=1.0, percentile=50.0)
-    planet = Planet(
-        mass   = ufloat(5.0,1.0),
-        radius = ufloat(2.0,0.1),
-        sep = 0.1
-    )
-    
-    planet.set_models(
-        star_model = star,
-        core_model      = model_unwrapper(models.core_otegi20),
-        envelope_model  = model_unwrapper(models.envelope_chen16),
-        mass_loss_model = model_unwrapper(models.massloss_energy_limited),
+    state = EvoState(mass=5.0, radius=2.0, sep=0.1, lbol=1e33, age=100)
+    solved, success = ph.planet.solve_planet_from_mass_radius(
+        state = state,
+        env_model  = wrap_callback(models.envelope_chen16),
+        core_model = wrap_callback(models.core_otegi20)
     )
 
-    planet.initial_state.age = ufloat(1000, 100)
-    planet.initial_state.lx   = planet.star_model['lx'](EvoState(age=1000), {})
-    planet.initial_state.leuv = planet.star_model['leuv'](EvoState(age=1000), {})
-    planet.initial_state.lbol = planet.star_model['lbol'](EvoState(age=1000), {})
-    state, success = _solve_planet_from_mass_radius(
-        state = planet.initial_state,
-        model_kw = planet.model_args,
-        env_model = planet.envelope_model,
-        core_model = planet.core_model
+    assert success, "Models did not converge to a solution"
+    assert solved.mass == 5.0 and solved.radius == 2.0 and solved.sep == 0.1,\
+        "Preset parameters changed"
+    assert np.isclose(solved.radius, solved.rcore + solved.renv), \
+        "Core and envelope sizes are not consistent with given radius"
+    assert np.isclose(solved.mass, solved.mcore * (1 + solved.fenv)), \
+        "Core and envelope masses are not consistent with given mass"
+
+
+def test_solve_planet_from_mass_radius_uncert():
+
+    ustate = EvoState(
+        mass   = ufloat(5.0, 0.5),
+        radius = ufloat(2.0, 0.1),
+        sep    = 0.1,
+        lbol   = 1e33,
+        age    = ufloat(100.0, 5.0)
     )
 
-    print(success, state)
-    assert False
-
-
-
-
-def test_planet_solve_structure_errors():
-    
-    star = mors.Star(Mstar=1.0, percentile=50.0)
-
-    planet = Planet(
-        mass   = ufloat(5.0,1.0),
-        radius = ufloat(2.0,0.1),
-        period = 25.0
+    solved, success = ph.planet.solve_planet_from_mass_radius_uncert(
+        state = ustate,
+        env_model  = wrap_callback(models.envelope_chen16),
+        core_model = wrap_callback(models.core_otegi20),
+        error_kw = {'ot20_errors': True},
     )
-
-    planet.set_models(
-        star_model      = {
-            'mass': star.Mstar,
-            'lx'  : wrap_callback(uwrap(lambda **kw: star.Lx(   kw['age'] ))),
-            'leuv': wrap_callback(uwrap(lambda **kw: star.Leuv( kw['age'] ))),
-            'lbol': wrap_callback(uwrap(lambda **kw: star.Lbol( kw['age'] ))),
-        },
-        core_model      = super_wrapper(models.core_otegi20),
-        envelope_model  = super_wrapper(models.envelope_chen16),
-        mass_loss_model = super_wrapper(models.massloss_energy_limited)
-    )
-
-    # state = planet.solve_structure(age=ufloat(100,10), errors=True)
-    # print(state)
-    
-    # star_model
-    # keplers_third_law
-    # solve_from_mass_radius
-
-
-def test_planet_solve_structure():
-    star = mors.Star(Mstar=1.0, percentile=50.0)
-    planet = Planet(
-        mass   = 5.0,
-        radius = 2.0,
-        period = 25.0
-    )
-    planet.set_models(
-        star_model      = star,
-        core_model      = models.core_otegi20,
-        envelope_model  = models.envelope_chen16,
-        mass_loss_model = models.massloss_energy_limited
-    )
-    state = planet.solve_structure(age=100)
-    print(state)
+    assert success, "Models did not converge to a solution"
+    assert solved.mass    == ustate.mass   \
+        and solved.radius == ustate.radius \
+        and solved.sep    == ustate.sep,   \
+        "Preset parameters changed"
+    assert np.isclose(solved.radius.n, solved.rcore.n + solved.renv.n), \
+        "Core and envelope sizes are not consistent with given radius"
+    assert np.isclose(solved.mass.n, solved.mcore.n * (1 + solved.fenv.n)), \
+        "Core and envelope masses are not consistent with given mass"

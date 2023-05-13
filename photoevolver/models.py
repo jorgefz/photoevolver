@@ -34,9 +34,10 @@ def core_otegi20(
         raise ValueError(f"[core_otegi20] Invalid core mass ({bounds})")
     scaling = uncert.ufloat(1.03, 0.02)
     exponent = uncert.ufloat(0.29, 0.01)
-    rcore = scaling * mcore ** exponent
-    if not ot20_errors:
-        return rcore.nominal_value
+    if ot20_errors:
+        rcore = scaling * mcore ** exponent
+    else:
+        rcore = scaling.n * mcore ** exponent.n
     return rcore
 
 

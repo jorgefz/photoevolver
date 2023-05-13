@@ -7,6 +7,8 @@ import copy
 import abc
 from astropy import units, constants
 import uncertainties as uncert
+from uncertainties import ufloat
+from uncertainties import wrap as uwrap
 from scipy.optimize import (
     least_squares as scipy_leastsq,
     fsolve as scipy_fsolve
@@ -97,11 +99,11 @@ def solve_envelope_model(
 
 def solve_planet_from_mass_radius(
         state      :EvoState,
-        env_model  :callable,
-        core_model :callable,
+        env_model  :typing.Callable[[EvoState,dict],float],
+        core_model :typing.Callable[[EvoState,dict],float],
         fenv_guess :float = 0.01,
-        model_kw   :dict = None,
-        errors     :bool = False
+        model_kw   :dict  = None,
+        errors     :bool  = False
         ) -> list[EvoState,bool]:
     """
     Solves for the structure of a planet given its mass and radius,
@@ -109,7 +111,8 @@ def solve_planet_from_mass_radius(
     Assumes the mass and radius are defined, but does not require
     core or envelope information.
     It can also accept variables with uncertainties and return planet parameters
-    with calculated uncertainties as well.
+    with calculated uncertainties as well, as long as the provided models
+    can handle uncertainties.
     
     Parameters
     ----------
@@ -136,40 +139,109 @@ def solve_planet_from_mass_radius(
     state :EvoState
         Solved internal structure of the planet.
     success :bool
-        Specifies whether the solution converged.
-
+        Whether the solution converged.
     """
 
     def diff_fn(x :list[float], *args, **kwargs) -> float:
         """Returns the difference in envelope thicknesses
-        predicted by the core and envelope models"""
+        calculated using the core and envelope models"""
         state, model_kw = kwargs['state'], kwargs['model_kw']
         core_model, env_model = kwargs['core_model'], kwargs['env_model']
         state.fenv = x[0]
-        # Calculate envelope radius from mass-radius relation
-        # state.mcore = (1.0 - state.fenv) * state.mass
+        # Calculate envelope radius from core mass-radius relation
         state.mcore = state.mass / (1.0 + state.fenv)
         state.rcore = core_model(state, model_kw)
         renv1 = state.radius - state.rcore
-        # Calculate envelope radius from envelope structure formulation
+        # Calculate envelope thickness from envelope structure model
         renv2 = env_model(state, model_kw)
         return renv1 - renv2
     
+    # Objects on function parameters are initialised only once!
     if model_kw is None:
         model_kw = {}
+    
+    # Least squares model more accurate than fsolve
     solution = scipy_leastsq(
-        fun = diff_fn,  x0 = fenv_guess, bounds = [0.0, 1.0],
+        fun = diff_fn, x0 = fenv_guess, bounds = [0.0, 1.0],
         kwargs = dict(
             state = state, model_kw = model_kw,
             core_model = core_model, env_model = env_model
         )
     )
+    
     state.fenv = solution.x[0]
-    # state.mcore = (1.0 - state.fenv) * state.mass
     state.mcore = state.mass / (1.0 + state.fenv)
     state.rcore = core_model(state, model_kw)
     state.renv = state.radius - state.rcore
     return state, solution.success
+
+
+def solve_planet_from_mass_radius_uncert(
+        state      :EvoState,
+        env_model  :callable,
+        core_model :callable,
+        fenv_guess :float = 0.01,
+        model_kw   :dict  = None,
+        error_kw   :dict  = None,
+        ) -> list[EvoState,bool]:
+    """
+    Solves for the structure of a planet given its mass and radius,
+    as well as orbital and stellar parameters,
+    allowing the state to have quantities with uncertainties.
+    Assumes the mass and radius are defined, but does not require
+    core or envelope information.
+
+    Parameters
+    ----------
+    state      : EvoState
+        Simulation state - must have mass and radius defined.
+        This instance is modified in the function.
+    env_model  : Callable[[EvoState,dict], float]
+        Function that calculates the envelope thickness
+        from the simulation state. For documentation on
+        signature, see `solve_envelope_model`.
+    core_model : callable
+        Function that calculates the core radius from the
+        simulation state. For documentation on
+        signature, see `solve_core_model`.
+    fenv_guess : float, optional
+        Initial guess for the envelope mass fraction.
+    model_kw   : dict, optional
+        Keyword arguments passed to envelope and core models.
+    error_kw  : dict, optional
+        Keyword arguments to signal the core model to
+        return quantities with uncertainties.
+
+    Returns
+    -------
+    state :EvoState
+        Solved internal structure of the planet.
+    success :bool
+        Whether the solution converged.
+    """
+    solver_success :bool = True
+    
+    @uwrap
+    def usolve(**kwargs):
+        solved_state, success = solve_planet_from_mass_radius(
+            state = EvoState.from_dict(kwargs),
+            env_model  = core_model,
+            core_model = env_model
+        )
+        nonlocal solver_success
+        solver_success *= success
+        return solved_state.fenv
+
+    if model_kw is None: model_kw = {}
+    if error_kw is None: error_kw = {}
+    
+    ufenv = usolve(**state.asdict())
+    state.fenv = ufenv
+    state.mcore = state.mass / (1.0 + state.fenv)
+    state.rcore = core_model(state, error_kw)
+    state.renv = state.radius - state.rcore
+    return state, solver_success
+
 
 
 class Planet:
