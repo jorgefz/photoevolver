@@ -437,8 +437,6 @@ class Planet:
                 state.mcore, success = solve_core_model(
                     self.core_model, state, guess, self.model_args)
                 assert success, "Failed to solve for the core mass"
-            else:
-                raise ValueError("Specify either core mass or core radius")
             assert state.fenv > 0.0, "Envelope mass must be over zero"
             state = self._solve_from_core_fenv(state)
             return state
@@ -552,7 +550,7 @@ class Planet:
                 assert valid_format, "Invalid format for stellar model"
                 return star
             # Stellar tracks from arrays
-            raise NotImplementedError("Invalid format for stellar model")
+            raise ValueError("Invalid format for stellar model")
         
         elif utils.is_mors_star(star):
             return dict(
@@ -562,7 +560,7 @@ class Planet:
                 lbol = lambda state,kw: star.Lbol(state.age),
             )
         
-        raise NotImplementedError("Invalid format for stellar model")
+        raise ValueError("Invalid format for stellar model")
     
     def _solve_from_mass_radius(
             self,

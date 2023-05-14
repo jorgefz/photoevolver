@@ -15,16 +15,15 @@ STAR = mors.Star(Mstar=1.0, percentile=50.0)
 """
 
 COVERAGE
-photoevolver/planet.py 47%
-    359
-    367-371
-    385-439
-    478-525
-    537-557
-    567-576
-    585-588
-    594-621
-    631
+photoevolver/planet.py 75%
+    432-433
+    441
+    447
+    486-533
+    547-555
+    565
+    602-629
+    639
 
 PROBLEMS
 
@@ -214,6 +213,25 @@ def test_planet_solve_structure():
     assert np.isclose(solved.radius, solved.rcore + solved.renv), \
         "Radius in solution not consistent with core and envelope sizes"
 
+    # Solve with mcore and fenv
+    planet = Planet(mcore = 4.0, fenv = 0.01, sep = 0.1)
+    planet.set_models(
+        star_model     = STAR,
+        envelope_model = models.envelope_chen16,
+        core_model     = models.core_otegi20,
+    )
+    solved = planet.solve_structure(age = 100)
+
+    print(solved.mass, solved.mcore * (1 + solved.fenv))
+
+    assert solved.mcore == planet.initial_state.mcore \
+        and solved.fenv == planet.initial_state.fenv, \
+        "Original parameters have changed on the solution"
+    assert np.isclose(solved.mass, solved.mcore * (1 + solved.fenv)), \
+        "Mass in solution not consistent with core and envelope masses"
+    assert np.isclose(solved.radius, solved.rcore + solved.renv), \
+        "Radius in solution not consistent with core and envelope sizes"
+
     # Calculate separation from period
     planet2 = Planet(mass = 10.0, radius = 4.0, period = 5.0)
     planet2.use_models(planet)
@@ -228,9 +246,63 @@ def test_planet_solve_structure():
     with pytest.raises(ValueError):
         planet2.solve_structure(age = 100)
 
-    # Error when not enough initial parameters defined
-    planet2 = Planet(mass = 10.0, mcore = 1.0)
+    # Error when not enough structure parameters given
+    planet2 = Planet(sep = 0.1)
     planet2.use_models(planet)
     with pytest.raises(ValueError):
         planet2.solve_structure(age = 100)
     
+
+def test_planet_parse_star():
+    # Parse dict with functions and star mass
+    planet = Planet(mass = 10.0, radius = 4.0, sep = 0.1)
+    stellar_model = dict(
+        mass = 1.0,
+        lx   = lambda _:0.0,
+        leuv = lambda _:0.0,
+        lbol = lambda _:0.0
+    )
+    parsed_model = planet._parse_star(stellar_model)
+    assert parsed_model == stellar_model
+
+    # Parse invalid model
+    stellar_model = dict(
+        mass = 1.0,
+        # lx   = lambda _:0.0,
+        leuv = lambda _:0.0,
+        lbol = lambda _:0.0
+    )
+    with pytest.raises(ValueError):
+        parsed_model = planet._parse_star(stellar_model)
+    
+    with pytest.raises(ValueError):
+        parsed_model = planet._parse_star(int())
+    
+    # Parse Mors object
+    parsed_model = planet._parse_star(STAR)
+    assert isinstance(parsed_model, dict)
+    assert set(parsed_model) == set(['lx', 'leuv', 'lbol', 'mass'])
+    assert parsed_model['mass'] == STAR.Mstar
+    assert callable(parsed_model['lx']) \
+        and callable(parsed_model['leuv']) \
+        and callable(parsed_model['leuv'])
+    assert parsed_model['lx'](EvoState(age=100),{}) == STAR.Lx(100)
+    assert parsed_model['leuv'](EvoState(age=100),{}) == STAR.Leuv(100)
+    assert parsed_model['lbol'](EvoState(age=100),{}) == STAR.Lbol(100)
+
+
+def test_planet_integration_step():
+    pass
+
+def test_planet_evolve():
+    pass
+
+def test_planet_debug_print(capfd):
+    # Capture debug message
+    msg = "test"
+    header = "[photoevolver.Planet]  "
+    Planet.debug = True
+    Planet._debug_print(msg)
+    out, err = capfd.readouterr()
+    print(out)
+    assert out == header + msg + "\n"
