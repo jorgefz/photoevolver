@@ -7,6 +7,7 @@ from photoevolver import models, Planet
 from photoevolver.evostate import EvoState, wrap_callback
 from uncertainties import ufloat, wrap as uwrap
 from scipy.optimize import least_squares as scipy_leastsq
+import pandas as pd
 
 # Generate sun-like stellar model once
 STAR = mors.Star(Mstar=1.0, percentile=50.0)
@@ -15,15 +16,9 @@ STAR = mors.Star(Mstar=1.0, percentile=50.0)
 """
 
 COVERAGE
-photoevolver/planet.py 75%
-    432-433
-    441
-    447
-    486-533
-    547-555
-    565
-    602-629
-    639
+photoevolver/planet.py  88%
+    484-531
+    622-624
 
 PROBLEMS
 
@@ -292,10 +287,63 @@ def test_planet_parse_star():
 
 
 def test_planet_integration_step():
-    pass
+    planet = Planet(mass = 5.0, radius = 2.0, sep = 0.1)
+    planet.set_models(
+        star_model      = STAR,
+        envelope_model  = models.envelope_chen16,
+        core_model      = models.core_otegi20,
+        mass_loss_model = models.massloss_energy_limited
+    )
+    # Initial state
+    age = 100
+    state = planet.solve_structure(age = age)
+    # Compute new state after one time step into the future
+    state.tstep = 1.0 # Myr
+    new_state = planet._integration_step(
+        age = age + state.tstep,
+        old_state = state
+    )
+    # Compare states
+    assert state.rcore == new_state.rcore and state.mcore == new_state.mcore,\
+        "The core is not supposed to evolve"
+    assert state.mass > new_state.mass, \
+        "Mass has not been reduced under evaporation"
+    assert state.radius > new_state.radius, \
+        "Radius has not been reduced under evaporation"
+    assert new_state.age == state.age + state.tstep, \
+        "Age not updated on new state"
+
+    # Test out evolution for completely evaporated envelope
+    # Ensure it does not evolve further
+    state = new_state
+    state.mass = state.mcore
+    state.radius = state.rcore
+    state.fenv = 0.0
+    state.renv = 0.0
+    new_state = planet._integration_step(age + state.tstep, state)
+    assert new_state.fenv == 0.0 and new_state.renv == 0.0
+    assert new_state.mass == new_state.mcore
+    assert new_state.radius == new_state.rcore
+
 
 def test_planet_evolve():
-    pass
+    planet = Planet(mass = 5.0, radius = 2.0, sep = 0.1)
+    planet.set_models(
+        star_model      = STAR,
+        envelope_model  = models.envelope_chen16,
+        core_model      = models.core_otegi20,
+        mass_loss_model = models.massloss_energy_limited
+    )
+    start = 100.0
+    end   = 110.0
+    step  = 1.0 
+    evo = planet.evolve(start=start, end=end, step=step)
+    sim_time = end - start - step
+    assert isinstance(evo, pd.DataFrame)
+    assert evo['age'].iloc[-1] == evo['age'].iloc[0] + sim_time
+    assert evo['radius'].iloc[0] > evo['radius'].iloc[-1]
+    assert evo['mass'].iloc[0] > evo['mass'].iloc[-1]
+
 
 def test_planet_debug_print(capfd):
     # Capture debug message

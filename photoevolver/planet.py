@@ -451,8 +451,8 @@ class Planet:
             self,
             start  :float,
             end    :float,
-            method :str = None,
-            step   :str = 0.01,
+            step   :float = 0.01,
+            method :str   = None,
             progressbar : bool = False,
             **kwargs
         ) -> pd.DataFrame:
@@ -593,9 +593,14 @@ class Planet:
         state.radius = state.rcore + state.renv
         return state
 
-    def _integration_step(self, age :float, old_state: EvoState, **kw) -> EvoState:
+    def _integration_step(
+            self,
+            age       :float,
+            old_state :EvoState,
+            **kw
+        ) -> EvoState:
         """
-        Computes a planet's state at a given age based on a previous state.
+        Computes a planet's state at a given age, based on a previous state.
         """
         kw['env_limit'] = kw.get('env_limit', 1+1e-5)
         state = old_state.copy()
