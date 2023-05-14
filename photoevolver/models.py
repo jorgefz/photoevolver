@@ -81,7 +81,7 @@ def envelope_lopez14(
     age_power = -0.11 # solar metallicity
     if lf14_opaque:
         age_power = -0.18 # enhanced opacity
-
+    
     # Simulation uses fenv = (mass-mcore)/mcore
     # This model uses fenv2 = (mass-mcore)/mass
     fenv2 = fenv / (fenv + 1)
@@ -312,7 +312,7 @@ def efficiency_salz16(
     mass   = mass * physics.constants.M_earth.to('g').value
     radius = radius * physics.constants.R_earth.to('m').value
     gpot = grav_cgs * mass / radius
-    v = np.log10(potential)
+    v = np.log10(gpot)
     if   ( v < 12.0):           log_eff = np.log10(0.23) # constant
     if   (12.0  < v <= 13.11):  log_eff = -0.44*(v-12.0) - 0.5
     elif (13.11 < v <= 13.6):   log_eff = -7.29*(v-13.11) - 0.98
@@ -452,7 +452,6 @@ def massloss_kubyshkina18_approx(
     return mloss
 
 
-@np.vectorize
 def euv_king18(
         lx     : float,
         rstar  : float,
@@ -474,7 +473,7 @@ def euv_king18(
     Returns
     -------
     leuv    : float, the EUV luminosity of the star with energy between
-            from 0.0136 keV and the lower range of the input X-rays.
+            from 0.0136 keV and the lower range of the input X-rays in erg/s.
     """
     # Model parameters
     params = {       # norm, exponent
@@ -485,15 +484,17 @@ def euv_king18(
         "0.243-2.4" : [2350, -0.539],
     }
 
-    assert energy in params, (
-        f"Energy range not covered by model.\n"
-        +f"Options: {allowed_ranges.keys()}"
-    )
+    if energy not in params:
+        raise ValueError(
+            f"Energy range not covered by model.\n"
+            +f"Options: {list(params.keys())}"
+        )
     
     # This relation uses X-ray and EUV fluxes at the stellar surface.
     c, p = params[energy]
     conv = physics.constants.R_sun.to('cm').value
     fx_at_rstar = lx / (4.0 * np.pi * (rstar * conv)**2)
-    feuv = c * (fx_at_rstar ** (p+1))  # EUV-to-Xrays flux ratio
-    leuv = feuv * 4.0 * np.pi * (feuv * physics.units.cm.to('R_sun'))**2
+    xratio = c * (fx_at_rstar ** p)  # EUV-to-Xrays flux ratio
+    feuv_at_rstar = fx_at_rstar * xratio
+    leuv = feuv_at_rstar * 4.0 * np.pi * (rstar * conv)**2
     return leuv
