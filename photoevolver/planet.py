@@ -500,9 +500,9 @@ class Planet:
         # Choose integration method
         integration_methods = {
             'euler': [EulerIntegrator, {'step_size': step}],
-            'rk45' : [RK45Integrator,  {'first_step': step, 'max_step':1.0}],
+            'rk45' : [RK45Integrator,  {'first_step': step, 'max_step':step}],
         }
-
+        
         if method is None:
             method = "euler"
         assert method in integration_methods, \
