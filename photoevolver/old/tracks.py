@@ -16,8 +16,8 @@ class Tracks:
 	@classmethod
 	def load(cls: 'Tracks', filename: str) -> 'Tracks':
 		with open(filename, 'rb') as handle:
-			tracks = pickle.load(handle)
-		return tracks
+			track = pickle.load(handle)
+		return track
 
 	def __init__(
 			self,
