@@ -32,6 +32,34 @@ def test_core_otegi20():
     assert result == result_err.nominal_value
 
 
+def test_core_fortney07():
+    # defaults to iron
+    result = models.core_fortney07(mcore = 1.0)
+    assert isinstance(result, float) \
+        and np.isfinite(result) \
+        and np.isclose(result, 1.0, rtol=0.03)
+
+    # explicit iron fraction
+    result2 = models.core_fortney07(mcore = 1.0, ft07_iron = 1/3)
+    assert result == result2
+
+    # defaults to iron fraction
+    result2 = models.core_fortney07(mcore = 1.0, ft07_ice = 0.0)
+    assert result == result2
+
+    # 50% ice mass fraction
+    ice  = models.core_fortney07(mcore = 5.0, ft07_ice  = 0.5)
+    iron = models.core_fortney07(mcore = 5.0, ft07_iron = 0.5)
+    assert ice > iron # Icy cores are less dense and thus larger
+    
+    # Error when mass fraction out of bounds
+    with pytest.raises(ValueError):
+        models.core_fortney07(mcore = 5.0, ft07_iron  = 2.0)
+        
+    with pytest.raises(ValueError):
+        models.core_fortney07(mcore = 5.0, ft07_iron  = -0.5)
+
+
 def test_envelope_models():
     env_models = [
         models.envelope_lopez14,

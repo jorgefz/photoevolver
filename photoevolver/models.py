@@ -41,6 +41,63 @@ def core_otegi20(
     return rcore
 
 
+def core_fortney07(
+        mcore     : float,
+        ft07_iron : float = 1/3,
+        ft07_ice  : float = 0.0,
+        **kwargs
+    ):
+    """
+    Calculates the radius of the planet's core using the relations
+    by Fortney et a. (2007) for both rocky and icy cores.
+    
+    Parameters
+    ----------
+    mcore     : float, core mass in Earth masses
+    ft07_iron : float (optional), iron mass fraction (0, 1)
+    ft07_ice  : float (optional), ice mass fraction (0, 1).
+        The iron and ice mass fractions cannot both be greater than zero.
+        By default, an iron mass fraction of 1/3 is used.
+        If the ice mass fraction is given a value above zero,
+        a rock-ice composition will be used instead of a rock-iron composition.
+
+    Returns
+    -------
+    rcore   : float, core radius.
+    """
+    iron_coeff = [
+        [0.0592, 0.0975], # 2nd order -> (a * rock + b) * m**2
+        [0.2337, 0.4938], # 1st order -> (a * rock + b) * m
+        [0.3102, 0.7932]  # 0th order -> (a * rock + b)
+    ]
+
+    ice_coeff = [
+        [0.0912, 0.1603], # 2nd order
+        [0.3330, 0.7387], # 1st order
+        [0.4639, 1.1193]  # 0th order
+    ]
+
+    if ft07_ice > 0.0:
+        # ice relation
+        coeff : list  = ice_coeff
+        comp  : float = ft07_ice
+    else:
+        # iron relation (uses the rock mass fraction)
+        coeff : list  = iron_coeff
+        comp  : float = 1 - ft07_iron
+    
+    if comp < 0.0 or comp > 1.0:
+        raise ValueError(
+            "[core_fortney07] Invalid ice/iron mass fraction."
+            + f"{comp} not in range (0,1)"
+        )
+    
+    rcore = 0.0
+    for i, c in enumerate(coeff):
+        rcore += (c[0] * comp + c[1]) * np.log10(mcore) ** (2 - i)
+    return rcore
+
+
 def envelope_lopez14(
         mass :float,
         fenv :float,
