@@ -24,6 +24,9 @@ from photoevolver import (
 from photoevolver.planet import Planet
 from photoevolver.evostate import wrap_callback
 
+# Legacy
+from photoevolver import legacy 
+
 
 
 
