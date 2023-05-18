@@ -9,6 +9,7 @@ import numpy as np
 import uncertainties as uncert
 from uncertainties import umath
 from . import physics, utils
+from . import cmodels
 
 def core_otegi20(
         mcore :float,
@@ -231,11 +232,12 @@ def envelope_chen16(
 
 
 def envelope_owen17(
-        mass :float,
-        fenv :float,
-        lbol :float,
-        sep  :float,
-        age  :float,
+        mass  :float,
+        fenv  :float,
+        lbol  :float,
+        sep   :float,
+        age   :float,
+        rcore :float,
         **kwargs
     ) -> float:
     """
@@ -251,12 +253,17 @@ def envelope_owen17(
     lbol   : float, bolometric luminosity of the hos star (erg/s/cm^2)
     sep    : float, orbital separation of the planet in AU
     age    : float, system age in Myr
+    rcore  : float, core radius in Earth radii
     
     Returns
     -------
     renv   : float, envelope thickness in Earth radii
     """
-    raise NotImplementedError("envelope_owen17 not yet implemented")
+    fbol = physics.get_flux(lum = lbol, dist_au = sep)
+    fenv2 = physics.get_fenv_planet_ratio(fenv)
+    return cmodels.envelope_owen17(
+        mass = mass, fenv = fenv2, fbol = fbol, age = age, rcore = rcore
+    )
 
 
 def massloss_energy_limited(

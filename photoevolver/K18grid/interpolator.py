@@ -306,7 +306,7 @@ def INTERPOL(Mss,EUV,T_i,r_i,m_i, dataset_file = None):   #,NTEST
                         #interpol_b0 for bt(usg), rpl(usg)
                         n_tmp, = np.where((mss == mssg[imss])*(teq==tg[iteq])*(euv==xuvg[ixuv])*(r_i==rpl)*(m_i==mpl));
                                         
-                        if((not n_tmp) and len(xuvg)>1):
+                        if((len(n_tmp) == 0) and len(xuvg)>1):
                             rplg = np.array(sorted(set(rpl[usg])));
                             lhy_ii_rpl = 0*np.linspace(1, len(rplg), len(rplg));#np.zeros((len(rplg),1));
                             
@@ -391,7 +391,7 @@ def INTERPOL(Mss,EUV,T_i,r_i,m_i, dataset_file = None):   #,NTEST
                         
                                                         
                 ## here set par_ii(Tg(iteq))
-                if(len(xuvg)>1 and (not n_tmp)):
+                if(len(xuvg)>1 and (len(n_tmp) == 0)):
                     if(EUV<=max(xuvg) and EUV>=min(xuvg)):
         #lhy(xuv)       This can also be linear, but the logarithm works better at the low Feuv    
                         lhy_ii_teq[iteq] = np.exp(np.interp( np.log(EUV), np.log(xuvg), np.log(lhy_ii_xuv)));
@@ -419,7 +419,7 @@ def INTERPOL(Mss,EUV,T_i,r_i,m_i, dataset_file = None):   #,NTEST
             n_tmp, = np.where(tg==T_i);
                             
             #here set par_ii(Mssg(imss))
-            if( len(tg)>1 and (not n_tmp)):
+            if( len(tg)>1 and (len(n_tmp) == 0)):
                 if(len(lhy_ii_teq)>0):
                         if( T_i>1000 and T_i <= max(tg)):#base on semi-axis
                           tg1 = SMAXIS(np.ones((len(tg),1))*mssg[imss], tg);
@@ -455,7 +455,7 @@ def INTERPOL(Mss,EUV,T_i,r_i,m_i, dataset_file = None):   #,NTEST
         
         n_tmp, = np.where(mssg==Mss);
                 
-        if(len(mssg)>1 and (not n_tmp)):
+        if(len(mssg)>1 and (len(n_tmp) == 0)):
             Lhy_i    = np.interp( Mss, mssg, lhy_ii_mss);
             
 

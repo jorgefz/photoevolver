@@ -64,7 +64,6 @@ def test_envelope_models():
     env_models = [
         models.envelope_lopez14,
         models.envelope_chen16,
-        # models.envelope_owen17
     ]
     params = {'mass':5.0, 'fenv':0.01, 'lbol':1e33, 'sep':0.1, 'age':100}
     for model in env_models:
@@ -74,7 +73,6 @@ def test_envelope_models():
             and result > 0.0
 
     # Test unique features of models
-    
     # --> lopez14 - opaque atmosphere
     result = models.envelope_lopez14(**params, lf14_opaque=True)
     assert isinstance(result, float) \
@@ -87,9 +85,11 @@ def test_envelope_models():
         and np.isfinite(result) \
         and result > 0.0
 
-    # --> owen17 - not implemented!
-    with pytest.raises(NotImplementedError):
-        result = models.envelope_owen17(**params)
+    # --> owen17 - requires core radius
+    result = models.envelope_owen17(**params, rcore = 1.64)
+    assert isinstance(result, float) \
+        and np.isfinite(result) \
+        and result > 0.0
 
 
 def test_salz16_models():
