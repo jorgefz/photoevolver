@@ -176,10 +176,10 @@ def solve_planet_from_mass_radius(
     return state, solution.success
 
 
-def solve_planet_from_mass_radius_uncert(
-        state      :EvoState,
-        env_model  :callable,
-        core_model :callable,
+
+def solve_with_errors(
+        planet     :'Planet',
+        age        :float,
         fenv_guess :float = 0.01,
         model_kw   :dict  = None,
         error_kw   :dict  = None,
@@ -193,17 +193,11 @@ def solve_planet_from_mass_radius_uncert(
 
     Parameters
     ----------
-    state      : EvoState
-        Simulation state - must have mass and radius defined.
-        This instance is modified in the function.
-    env_model  : Callable[[EvoState,dict], float]
-        Function that calculates the envelope thickness
-        from the simulation state. For documentation on
-        signature, see `solve_envelope_model`.
-    core_model : callable
-        Function that calculates the core radius from the
-        simulation state. For documentation on
-        signature, see `solve_core_model`.
+    planet     : Planet
+        Planet instance with mass, radius, and separation defined,
+        as well as core, envelope, and stellar models set.
+    age        : float
+        Age of the system in Myr.
     fenv_guess : float, optional
         Initial guess for the envelope mass fraction.
     model_kw   : dict, optional
@@ -214,7 +208,7 @@ def solve_planet_from_mass_radius_uncert(
 
     Returns
     -------
-    state :EvoState
+    solved  :dict
         Solved internal structure of the planet.
     success :bool
         Whether the solution converged.
@@ -223,24 +217,40 @@ def solve_planet_from_mass_radius_uncert(
     
     @uwrap
     def usolve(**kwargs):
+        state = EvoState.from_dict(kwargs)
+        state.lx = planet.star_model['lx'](state, model_kw)
+        state.leuv = planet.star_model['leuv'](state, model_kw)
+        state.lbol = planet.star_model['lbol'](state, model_kw)
+        state.mstar = planet.star_model['mass']
+
         solved_state, success = solve_planet_from_mass_radius(
-            state = EvoState.from_dict(kwargs),
-            env_model  = core_model,
-            core_model = env_model
+            state      = state,
+            env_model  = planet.core_model,
+            core_model = planet.envelope_model
         )
         nonlocal solver_success
-        solver_success *= success
+        solver_success |= success
         return solved_state.fenv
 
     if model_kw is None: model_kw = {}
     if error_kw is None: error_kw = {}
     
-    ufenv = usolve(**state.asdict())
-    state.fenv = ufenv
-    state.mcore = state.mass / (1.0 + state.fenv)
-    state.rcore = core_model(state, error_kw)
-    state.renv = state.radius - state.rcore
-    return state, solver_success
+    state = planet.initial_state.copy()
+    state.age    = age
+    state.mstar  = planet.star_model['mass']
+    if state.sep:
+        state.period = uwrap(physics.keplers_third_law)(
+            state.mstar, state.mass, sep = state.sep
+        )
+    else:
+        state.sep = uwrap(physics.keplers_third_law)(
+            state.mstar, state.mass, period = state.period
+        )
+    state.fenv   = usolve(**state.asdict())
+    state.mcore  = state.mass / (1.0 + state.fenv)
+    state.rcore  = planet.core_model(state, error_kw)
+    state.renv   = state.radius - state.rcore
+    return state.asdict(), solver_success
 
 
 

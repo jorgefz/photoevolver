@@ -83,31 +83,53 @@ def test_solve_planet_from_mass_radius():
         "Core and envelope masses are not consistent with given mass"
 
 
-def test_solve_planet_from_mass_radius_uncert():
+def test_solve_with_errors():
 
-    ustate = EvoState(
+    age = ufloat(100.0, 5.0)
+    uplanet = Planet(
         mass   = ufloat(5.0, 0.5),
         radius = ufloat(2.0, 0.1),
         sep    = 0.1,
-        lbol   = 1e33,
-        age    = ufloat(100.0, 5.0)
     )
-
-    solved, success = ph.planet.solve_planet_from_mass_radius_uncert(
-        state = ustate,
-        env_model  = wrap_callback(models.envelope_chen16),
-        core_model = wrap_callback(models.core_otegi20),
+    uplanet.set_models(
+        core_model = models.core_otegi20,
+        envelope_model = models.envelope_chen16,
+        star_model = STAR
+    )
+    
+    solution, success = ph.planet.solve_with_errors(
+        planet = uplanet,
+        age = age,
         error_kw = {'ot20_errors': True},
     )
+
     assert success, "Models did not converge to a solution"
-    assert solved.mass    == ustate.mass   \
-        and solved.radius == ustate.radius \
-        and solved.sep    == ustate.sep,   \
+    assert solution['period'] is not None, "Period not calculated"
+    assert  solution['mass'].n    == uplanet.initial_state.mass.n  \
+        and solution['radius'].n  == uplanet.initial_state.radius.n \
+        and solution['mass'].s    == uplanet.initial_state.mass.s  \
+        and solution['radius'].s  == uplanet.initial_state.radius.s \
+        and solution['sep']       == uplanet.initial_state.sep,   \
         "Preset parameters changed"
-    assert np.isclose(solved.radius.n, solved.rcore.n + solved.renv.n), \
-        "Core and envelope sizes are not consistent with given radius"
-    assert np.isclose(solved.mass.n, solved.mcore.n * (1 + solved.fenv.n)), \
-        "Core and envelope masses are not consistent with given mass"
+    assert np.isclose(
+            solution['radius'].n,
+            solution['rcore'].n + solution['renv'].n
+        ), "Core and envelope sizes are not consistent with given radius"
+    assert np.isclose(
+            solution['mass'].n,
+            solution['mcore'].n * (1 + solution['fenv'].n)
+        ), "Core and envelope masses are not consistent with given mass"
+
+    # Ensure you can define period instead of separation
+    uplanet.initial_state.period = 10.0
+    uplanet.initial_state.sep = None
+    solution, success = ph.planet.solve_with_errors(
+        planet = uplanet,
+        age = age,
+        error_kw = {'ot20_errors': True},
+    )
+    assert success, "Solution did not converge when using period"
+    assert solution['sep'] is not None, "Separation not calculated"
 
 
 def test_planet_init():
