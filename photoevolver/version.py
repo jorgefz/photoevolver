@@ -9,16 +9,17 @@ __author__ = "Jorge Fernandez"
 
 --- To Do ---
 
-- Turn Planet input variables to **kwargs
-- Function to evolve BOTH forward and back
-- Return more tracks including custom ones, e.g. eff, beta, etc
-- Envelope loss timescale calculator
-- Unphysical envelope enlargement calculator
 
 --- Changelog ---
 
 Version 2.0
-- A few things
+    - Restructured folders and submodules
+    - Added tests with pytest
+    - Improved planet and evolution API
+    - Evolution code now outputs pandas dataframes
+    - Evolution now supports the RK45 integration method
+    - Improved pydocs
+    - Integrated C functions with CPython
 
 Version 1.6.4
     - Changed behaviour of `solve_structure` when solution could not be found.
