@@ -136,6 +136,7 @@ class RK45Integrator(IntegratorBase):
         """
         super().__init__(**base_kw)
         self.state = self.y_start
+        self.state.tstep = first_step
         self.dt = first_step
         self.integ_params = [
             "mass", "radius", "fenv", "renv",
@@ -178,8 +179,8 @@ class RK45Integrator(IntegratorBase):
         self.state.age = self.rk45.t
         self.state = self.state.update(dict(zip(self.integ_params, self.rk45.y)))
         
-        # if result:
-        #     raise ValueError(result)
+        if result:
+            raise ValueError(result)
         if not self.running():
             self._end_pbar()
             return self.state.copy()

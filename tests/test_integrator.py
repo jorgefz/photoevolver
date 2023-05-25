@@ -1,16 +1,16 @@
 import numpy as np
 import pytest
-from photoevolver.integrator import IntegratorBase, EulerIntegrator
+from photoevolver.integrator import (
+    IntegratorBase, EulerIntegrator, RK45Integrator
+)
 from photoevolver.evostate import EvoState
 
-def test_integrator_base():
-    # Use the state radius as a proxy to integrate the function y(x) where dy/dx = -y
-    # Note that the function must return the next state after one time step
-    func = lambda t,state: state.update({'radius': state.radius * (1 - state.tstep)})
-    func_solution = lambda t: np.exp(-t)
-    args = dict(func=func, t_start=0.0, t_end=1.0, y_start=EvoState(radius=1.0))
 
+
+def test_base_integrator():
     # Instatiate abstract class
+    func = lambda t,state: state.update({'radius': state.radius * (1 - state.tstep)})
+    args = dict(func=func, t_start=0.0, t_end=1.0, y_start=EvoState(radius=1.0))
     with pytest.raises(TypeError):
         IntegratorBase(**args)
 
@@ -18,6 +18,15 @@ def test_integrator_base():
     class Deriv(IntegratorBase): pass
     with pytest.raises(TypeError):
         Deriv(**args)
+
+
+
+def test_euler_integrator():
+    # Use the state radius as a proxy to integrate the function y(x) where dy/dx = -y
+    # Note that the function must return the next state after one time step
+    func = lambda t,state: state.update({'radius': state.radius * (1 - state.tstep)})
+    func_solution = lambda t: np.exp(-t)
+    args = dict(func=func, t_start=0.0, t_end=1.0, y_start=EvoState(radius=1.0))
 
     # Instantiate derived class with overriden abstract methods
     step_size = 0.1
@@ -57,5 +66,22 @@ def test_integrator_base():
     assert np.isclose(func_solution(1.0), euler.state.radius, rtol=0.1)
     
 
+def test_rk45_intergator():
+    # Use the state radius as a proxy to integrate the function y(x) where dy/dx = -y
+    # Note that the function must return the next state after one time step
+    func = lambda t,state: state.update({'radius': state.radius * (1 - state.tstep)}).copy()
+    func_solution = lambda t: np.exp(-t)
+    args = dict(func=func, t_start=0.0, t_end=1.0, y_start=EvoState(radius=1.0))
 
+    step_size = 0.01
+    rk45 = RK45Integrator(**args, first_step = step_size, max_step = step_size)
 
+    # Check base members
+    assert rk45.func == args['func'] and rk45.y_start == args['y_start']
+    assert rk45.t_start == args['t_start'] and rk45.t_end == args['t_end']
+    assert rk45.direction == 1 and rk45.do_pbar == False
+
+    # Check derived members
+    assert isinstance(rk45.func_kw,dict) and rk45.state == rk45.y_start 
+    assert rk45.dt == step_size
+    assert hasattr(rk45, "rk45")
