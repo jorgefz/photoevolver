@@ -562,3 +562,111 @@ def euv_king18(
     feuv_at_rstar = fx_at_rstar * xratio
     leuv = feuv_at_rstar * 4.0 * np.pi * (rstar * conv)**2
     return leuv
+
+
+@np.vectorize
+def rotation_activity_wright11(
+        mstar :float,
+        prot  :float = None,
+        rx    :float = None,
+    ) -> float:
+    """
+    Converts rotation period to X-ray activity and viceversa,
+    using the rotation-activity relation by Wright et al. 2011
+    for convective-radiative stars (FGK and early M dwarfs).
+
+    If you provide `prot`, then `lx` will be calculated.
+    Likewise, if you provide `lx`, then `prot` will be calculated.
+    If you provide both, the input `lx` is ignored.
+    You also need to provide `mstar`.
+
+    Parameters
+    ----------
+    mstar   :float, Mass of the star in solar masses
+    prot    :float, Spin period of the star in days
+    lx      :float, X-ray luminosity of the star in erg/s
+    
+    Returns
+    -------
+    lx_or_prot :float
+    """
+    rossn = physics.rossby_number_from_mass(mass = mstar, prot = prot)
+    rossn_sat = 0.13
+    rx_sat    = 10**(-3.13)
+    pow_exp   = -2.18
+    norm = rx_sat / np.power(rossn_sat, pow_exp)
+    if rossn <= rossn_sat:
+        return rx_sat
+    return norm * np.power(rossn, pow_exp)
+
+
+@np.vectorize
+def rotation_activity_wright18(
+        mstar :float,
+        prot  :float = None,
+        rx    :float = None,
+    ) -> float:
+    """
+    Converts rotation period to X-ray activity and viceversa,
+    using the rotation-activity relation by Wright et al. 2018
+    for fully convective stars (late M dwarfs).
+
+    If you provide `prot`, then `lx` will be calculated.
+    Likewise, if you provide `lx`, then `prot` will be calculated.
+    If you provide both, the input `lx` is ignored.
+    You also need to provide `mstar`.
+
+    Parameters
+    ----------
+    mstar   :float, Mass of the star in solar masses
+    prot    :float, Spin period of the star in days
+    lx      :float, X-ray luminosity of the star in erg/s
+    
+    Returns
+    -------
+    lx_or_prot :float
+    """
+    rossn = physics.rossby_number_from_mass(mass = mstar, prot = prot)
+    rossn_sat = 0.14
+    rx_sat    = 10**(-3.05)
+    pow_exp   = -2.3
+    norm = rx_sat / np.power(rossn_sat, pow_exp)
+    if rossn <= rossn_sat:
+        return rx_sat
+    return norm * np.power(rossn, pow_exp)
+
+
+@np.vectorize
+def rotation_activity_johnstone21(
+        mstar :float,
+        prot  :float = None,
+        rx    :float = None,
+    ) -> float:
+    """
+    Converts rotation period to X-ray activity and viceversa,
+    using the rotation-activity relation by Johnstone et al. 2021
+    for main sequence stars.
+
+    If you provide `prot`, then `lx` will be calculated.
+    Likewise, if you provide `lx`, then `prot` will be calculated.
+    If you provide both, the input `lx` is ignored.
+    You also need to provide `mstar`.
+
+    Parameters
+    ----------
+    mstar   :float, Mass of the star in solar masses
+    prot    :float, Spin period of the star in days
+    lx      :float, X-ray luminosity of the star in erg/s
+    
+    Returns
+    -------
+    lx_or_prot :float
+    """
+    p1, p2 = -0.135, -1.889
+    ro_sat, rx_sat = 0.0605, 5.135e-4
+    c1 = rx_sat/np.power(ro_sat,p1)
+    c2 = rx_sat/np.power(ro_sat,p2)
+    ro = physics.rossby_number_from_mass(mass = mstar, prot = prot)    
+    if ro <= ro_sat:
+        return c1 * np.power(ro, p1)
+    return c2 * np.power(ro, p2)
