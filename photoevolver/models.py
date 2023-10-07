@@ -624,7 +624,7 @@ def rotation_activity_wright18(
 
 @np.vectorize
 def rotation_activity_johnstone21(
-        prot  :float = None,
+        prot  :float,
         mstar :float,
     ) -> float:
     """
@@ -669,10 +669,9 @@ def radius_valley_vaneylen18(period :float) -> float:
     -------
     radius  : float, planet radius in Earth radii at which the radius valley occurs.
     """
-    return per**(-0.09) * 0.37
+    return 10**(-0.09 * np.log10(period) + 0.37)
     
 
-@np.vectorize
 def neptune_desert_mazeh16(period: float) -> float:
     """
     Returns the radii corresponding to the lower and upper
@@ -686,6 +685,6 @@ def neptune_desert_mazeh16(period: float) -> float:
     (lower,upper)   : [float,2], Radii of the lower and upper
                     edges of the Neptune desert.
     """
-    upper_radius = period**(-0.33) * 1.17
-    lower_radius = period**( 0.68)
+    upper_radius = 10**(-0.33 * np.log10(period) + 1.17)
+    lower_radius = 10**( 0.68 * np.log10(period))
     return np.array([lower_radius, upper_radius])
