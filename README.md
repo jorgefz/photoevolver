@@ -6,14 +6,15 @@
 ```python
 import photoevolver as ph
 import Mors as mors # For the stellar model
+import matplotlib.pyplot as plt
 
 planet = ph.Planet(mass = 5.0, radius = 2.0, period = 5.0)
 #                  M_earth,    R_earth,      days
 
 planet.set_models(
-    core_model = ph.models.core_otegi20,
-    star_model = mors.Star(Mstar = 1.0, percentile = 50.0),
-    envelope_model = ph.models.envelope_chen16,
+    core_model      = ph.models.core_otegi20,
+    star_model      = mors.Star(Mstar = 1.0, percentile = 50.0),
+    envelope_model  = ph.models.envelope_chen16,
     mass_loss_model = ph.models.massloss_energy_limited
 )
 
@@ -22,6 +23,11 @@ evo = planet.evolve(
     start = 10.0, end = 1000.0, step = 1.0, # Myr
     progressbar = True
 )
+
+plt.plot(evo['age'], evo['radius'])
+plt.xlabel("Age (Myr)")
+plt.ylabel("Radius (Earth radii)")
+plt.show()
 ```
 
 See the jupyter notebooks on the folder `examples` for more information.
