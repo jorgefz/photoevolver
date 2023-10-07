@@ -566,29 +566,22 @@ def euv_king18(
 
 @np.vectorize
 def rotation_activity_wright11(
+        prot  :float,
         mstar :float,
-        prot  :float = None,
-        rx    :float = None,
     ) -> float:
     """
-    Converts rotation period to X-ray activity and viceversa,
+    Converts rotation period to X-ray activity
     using the rotation-activity relation by Wright et al. 2011
     for convective-radiative stars (FGK and early M dwarfs).
 
-    If you provide `prot`, then `lx` will be calculated.
-    Likewise, if you provide `lx`, then `prot` will be calculated.
-    If you provide both, the input `lx` is ignored.
-    You also need to provide `mstar`.
-
     Parameters
     ----------
-    mstar   :float, Mass of the star in solar masses
     prot    :float, Spin period of the star in days
-    lx      :float, X-ray luminosity of the star in erg/s
+    mstar   :float, Mass of the star in solar masses
     
     Returns
     -------
-    lx_or_prot :float
+    xray_activity :float, X-ray activity (Lx/Lbol)
     """
     rossn = physics.rossby_number_from_mass(mass = mstar, prot = prot)
     rossn_sat = 0.13
@@ -602,29 +595,22 @@ def rotation_activity_wright11(
 
 @np.vectorize
 def rotation_activity_wright18(
+        prot  :float,
         mstar :float,
-        prot  :float = None,
-        rx    :float = None,
     ) -> float:
     """
-    Converts rotation period to X-ray activity and viceversa,
+    Converts rotation period to X-ray activity
     using the rotation-activity relation by Wright et al. 2018
     for fully convective stars (late M dwarfs).
 
-    If you provide `prot`, then `lx` will be calculated.
-    Likewise, if you provide `lx`, then `prot` will be calculated.
-    If you provide both, the input `lx` is ignored.
-    You also need to provide `mstar`.
-
     Parameters
     ----------
-    mstar   :float, Mass of the star in solar masses
     prot    :float, Spin period of the star in days
-    lx      :float, X-ray luminosity of the star in erg/s
+    mstar   :float, Mass of the star in solar masses
     
     Returns
     -------
-    lx_or_prot :float
+    xray_activity :float, X-ray activity (Lx/Lbol)
     """
     rossn = physics.rossby_number_from_mass(mass = mstar, prot = prot)
     rossn_sat = 0.14
@@ -638,29 +624,27 @@ def rotation_activity_wright18(
 
 @np.vectorize
 def rotation_activity_johnstone21(
-        mstar :float,
         prot  :float = None,
-        rx    :float = None,
+        mstar :float,
     ) -> float:
     """
-    Converts rotation period to X-ray activity and viceversa,
+    Converts rotation period to X-ray activity
     using the rotation-activity relation by Johnstone et al. 2021
     for main sequence stars.
 
-    If you provide `prot`, then `lx` will be calculated.
-    Likewise, if you provide `lx`, then `prot` will be calculated.
-    If you provide both, the input `lx` is ignored.
-    You also need to provide `mstar`.
+    Note: Johnstone+21 use the period-rossby number relation
+    from Spada et al. (2013), which is very similar to the one
+    that the `rossby_number_from_mass` function and
+    Wright et al. (2011) use.
 
     Parameters
     ----------
-    mstar   :float, Mass of the star in solar masses
     prot    :float, Spin period of the star in days
-    lx      :float, X-ray luminosity of the star in erg/s
-    
+    mstar   :float, Mass of the star in solar masses
+
     Returns
     -------
-    lx_or_prot :float
+    xray_activity :float, X-ray activity (Lx/Lbol)
     """
     p1, p2 = -0.135, -1.889
     ro_sat, rx_sat = 0.0605, 5.135e-4
@@ -670,3 +654,38 @@ def rotation_activity_johnstone21(
     if ro <= ro_sat:
         return c1 * np.power(ro, p1)
     return c2 * np.power(ro, p2)
+
+
+def radius_valley_vaneylen18(period :float) -> float:
+    """
+    Returns the location of the radius valley for a given orbital period.
+    Following the definition of radius valley by Van Eylen et al. (2018).
+
+    Parameters
+    ----------
+    period  : float, orbital period in days.
+
+    Returns
+    -------
+    radius  : float, planet radius in Earth radii at which the radius valley occurs.
+    """
+    return per**(-0.09) * 0.37
+    
+
+@np.vectorize
+def neptune_desert_mazeh16(period: float) -> float:
+    """
+    Returns the radii corresponding to the lower and upper
+    edges of the Neptune desert, following Mazeh et al. (2016).
+
+    Parameters
+    ----------
+    period  : float, orbital period
+
+    Returns
+    (lower,upper)   : [float,2], Radii of the lower and upper
+                    edges of the Neptune desert.
+    """
+    upper_radius = period**(-0.33) * 1.17
+    lower_radius = period**( 0.68)
+    return np.array([lower_radius, upper_radius])
