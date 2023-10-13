@@ -20,6 +20,7 @@ Version 2.0
     - Evolution now supports the RK45 integration method
     - Improved pydocs
     - Integrated C functions with CPython
+    - Added github banners
 
 Version 1.6.4
     - Changed behaviour of `solve_structure` when solution could not be found.

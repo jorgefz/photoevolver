@@ -1,4 +1,10 @@
-# photoevolver v2.0
+# Photoevolver
+[![Jupyter Notebooks](https://img.shields.io/badge/Jupyter-notebooks-lawngreen)](https://www.github.com/jorgefz/photoevolver/blob/main/examples)
+[![Coverage](https://img.shields.io/badge/Coverage-54%25-orange)]()
+[![Python](https://img.shields.io/badge/Python->=3.10-cornflowerblue)]()
+[![Read the paper](https://img.shields.io/badge/Read-the%20paper-blue)](https://ui.adsabs.harvard.edu/abs/2023MNRAS.tmp.1197F/abstract)
+[![License](https://img.shields.io/badge/License-GNU%20GPL%20v3.0-mediumorchid)](https://www.github.com/jorgefz/photoevolver/blob/main/LICENSE)
+
 
 `photoevolver` is a Python module that evolves the gaseous envelope of planets backwards and forward in time, taking into account internal structure and cooling rate, atmospheric mass loss processes, and the stellar X-ray emission history.
 
@@ -50,7 +56,7 @@ You can now import the module and use it straight away:
 
 The Kepler telescope has found a surprising number of planets between the Earth and Neptune in size. These planets follow a bimodal (two-peaked) distribution in radii, with peaks at 1.5 and 2.4 Earth radii, and a *radius valley* at 1.8 Earth radii. The first peak is most likely populated by entirely rocky planets, whereas the second one consists of rocky cores with H/He-rich envelopes that can double the planet's radius and yet comprise only a few percent of its mass. This radius valley would be created by atmospheric mass loss processes that evaporate planetary atmospheres over time, completely stripping them in extreme cases (Fulton et al. 2017).
 
-One such mechanism is *photoevaporation*, where stellar X-rays are readily absorbed by the upper layers of planetary atmospheres, which expand to the Roche lobe and thus escape. Stellar X-rays are not constant, but tied to the star's rotation period. Faster rotators produce a greater X-ray emission. Stars also spin down with time, reducing their X-ray output by an order of magnitude within the first 100 Myr of age (Wright et al. 2011).
+One such process is *photoevaporation*, where stellar X-rays are readily absorbed by the upper layers of planetary atmospheres, which expand and escape the planet. Stellar X-rays are not constant, but tied to the star's rotation period. Faster rotators produce a greater X-ray emission. Stars also spin down with time, reducing their X-ray output by an order of magnitude within the first 1 Gyr of age (Wright et al. 2011).
 
 A description of a planet's evaporation past would thus require the planet's internal structure (and current amount of gas), the X-ray emission history of the host star, and a mass loss model, which relates the amount of input energy from X-rays to the resulting mass loss rate from the planet.
 
