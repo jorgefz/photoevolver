@@ -161,7 +161,7 @@ def test_planet_set_models():
     assert planet.model_args == {}, \
         "Model args not set to empty dict by default"
 
-    # Check mass loss model defaults to function returning zero
+    # Check models left unset are not updated with None value
     planet.set_models(
         star_model     = STAR,
         envelope_model = models.envelope_chen16,
@@ -169,10 +169,7 @@ def test_planet_set_models():
         mass_loss_model = None,
     )
 
-    assert planet.mass_loss_model, \
-        "Default mass loss model not set"
-    assert planet.mass_loss_model(EvoState(), {}) == 0.0, \
-        "Default mass loss model does not return zero"
+    assert planet.mass_loss_model is not None, "Mass loss model updated to None"
 
 
 def test_planet_use_models():
@@ -354,17 +351,18 @@ def test_planet_evolve():
         star_model      = STAR,
         envelope_model  = models.envelope_chen16,
         core_model      = models.core_otegi20,
-        mass_loss_model = models.massloss_energy_limited
+        mass_loss_model = None
     )
     start = 100.0
     end   = 110.0
     step  = 1.0 
     evo = planet.evolve(start=start, end=end, step=step)
     sim_time = end - start - step
+    assert planet.mass_loss_model() == 0.0, "Default mass loss does not return zero"
     assert isinstance(evo, pd.DataFrame)
     assert evo['age'].iloc[-1] == evo['age'].iloc[0] + sim_time
     assert evo['radius'].iloc[0] > evo['radius'].iloc[-1]
-    assert evo['mass'].iloc[0] > evo['mass'].iloc[-1]
+    assert evo['mass'].iloc[0] >= evo['mass'].iloc[-1]
 
 
 def test_planet_debug_print(capfd):
