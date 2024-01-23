@@ -14,6 +14,7 @@ from scipy.optimize import (
     fsolve as scipy_fsolve
 )
 import tqdm
+import warnings
 
 from . import physics, utils
 from .integrator import EulerIntegrator, RK45Integrator
@@ -304,7 +305,7 @@ class Planet:
     ###################
     # Public Methods  #
     ###################
-
+    
     def set_models(self,
             star_model      :dict|typing.Any             = None,
             envelope_model  :typing.Callable[..., float] = None,
@@ -354,7 +355,7 @@ class Planet:
         self.model_args = {} if model_args is None else model_args
         
         if star_model is not None:
-            self.star_model = self._parse_star(star_model)
+            self.star_model = self.parse_star(star_model)
             Planet._debug_print(
                 f"Using star model with {self.star_model['mass']:.2f} solar masses",
             )
@@ -551,31 +552,8 @@ class Planet:
     ###################
 
     def _parse_star(self, star :dict|typing.Any) -> dict:
-        """
-        Collects stellar parameters and evolution tracks
-        from input arguments.
-        """
-        if isinstance(star, dict):
-            # Stellar tracks from functions
-            if set(star) == set(['mass','lx','leuv','lbol']):
-                valid_format = all([
-                    callable(star['lx']),   callable(star['leuv']),
-                    callable(star['lbol']), star['mass'] > 0.0
-                ])
-                assert valid_format, "Invalid format for stellar model"
-                return star
-            # Stellar tracks from arrays
-            raise ValueError("Invalid format for stellar model")
-        
-        elif utils.is_mors_star(star):
-            return dict(
-                mass = star.Mstar,
-                lx   = lambda state,kw: star.Lx(state.age),
-                leuv = lambda state,kw: star.Leuv(state.age),
-                lbol = lambda state,kw: star.Lbol(state.age),
-            )
-        
-        raise ValueError("Invalid format for stellar model")
+        warnings.warn("Function 'Planet._parse_star' is deprecated. Please use static method 'Planet.parse_star'.")
+        return self.parse_star(star)
     
     def _solve_from_mass_radius(
             self,
@@ -655,4 +633,30 @@ class Planet:
         """Prints message in debug mode"""
         if Planet.debug is True:
             print(f"[photoevolver.Planet] ", *args)
+
+    @staticmethod
+    def parse_star(star :dict|typing.Any) -> dict:
+        """
+        Converts an input stellar model into internal format.
+        """
+        if isinstance(star, dict):
+            # Stellar tracks from functions
+            if set(star) == set(['mass','lx','leuv','lbol']):
+                valid_format = all([
+                    callable(star['lx']),   callable(star['leuv']),
+                    callable(star['lbol']), star['mass'] > 0.0
+                ])
+                assert valid_format, "Invalid format for stellar model"
+                return star
+            raise ValueError("Invalid format for stellar model")
+        
+        elif utils.is_mors_star(star):
+            return dict(
+                mass = star.Mstar,
+                lx   = lambda state,kw: star.Lx(state.age),
+                leuv = lambda state,kw: star.Leuv(state.age),
+                lbol = lambda state,kw: star.Lbol(state.age),
+            )
+        
+        raise ValueError("Invalid format for stellar model")
 
