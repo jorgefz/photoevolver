@@ -276,7 +276,7 @@ def test_planet_parse_star():
         leuv = lambda _:0.0,
         lbol = lambda _:0.0
     )
-    parsed_model = planet._parse_star(stellar_model)
+    parsed_model = planet.parse_star(stellar_model)
     assert parsed_model == stellar_model
 
     # Parse invalid model
@@ -287,13 +287,13 @@ def test_planet_parse_star():
         lbol = lambda _:0.0
     )
     with pytest.raises(ValueError):
-        parsed_model = planet._parse_star(stellar_model)
+        parsed_model = planet.parse_star(stellar_model)
     
     with pytest.raises(ValueError):
-        parsed_model = planet._parse_star(int())
+        parsed_model = planet.parse_star(int())
     
     # Parse Mors object
-    parsed_model = planet._parse_star(STAR)
+    parsed_model = planet.parse_star(STAR)
     assert isinstance(parsed_model, dict)
     assert set(parsed_model) == set(['lx', 'leuv', 'lbol', 'mass'])
     assert parsed_model['mass'] == STAR.Mstar
