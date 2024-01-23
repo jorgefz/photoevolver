@@ -306,18 +306,21 @@ class Planet:
     ###################
 
     def set_models(self,
-            star_model      :dict|typing.Any,
-            envelope_model  :typing.Callable[..., float],
-            core_model      :typing.Callable[..., float],
+            star_model      :dict|typing.Any             = None,
+            envelope_model  :typing.Callable[..., float] = None,
+            core_model      :typing.Callable[..., float] = None,
             mass_loss_model :typing.Callable[..., float] = None,
             model_args      :dict = None
-        ) -> typing.NoReturn:
+        ) -> 'Planet':
         """
-        Provides the models necessary to run the simulation:
+        Provides the model callbacks necessary to calculate the planet's internal structure
+        and to simulate its evaporation history.
+        If an input model is left unset (with None value),
+        its value in the Planet instance will not be updated.
 
         Parameters
         ----------
-            star    :dict | mors.Star
+        star    :dict | mors.Star, optional
             Host star parameters and emission history.
             Must be one of the following:
             - Dict with the following keys:
@@ -335,58 +338,55 @@ class Planet:
             - Mors.Star object,
                 see https://github.com/ColinPhilipJohnstone/Mors
         
-        envelope  :Callable(EvoState,dict) -> float
+        envelope  :Callable(EvoState,dict) -> float, optional
             Envelope structure model. Calculates and returns the envelope thickness.
 
-        core_model :Callable(EvoState,dict) -> float
+        core_model :Callable(EvoState,dict) -> float, optional
             Calculates and returns the core radius from its mass.
 
-        mass_loss :Callable(EvoState,dict) -> float
+        mass_loss :Callable(EvoState,dict) -> float, optional
             Calculates and returns the mass loss rate in grams/sec.
             Default is function that returns a mass loss of zero.
 
         model_args :dict, optional
             Additional parameters passed to the models above.
         """
-        # Validate stellar model
-        if model_args is None: model_args = dict()
-        self.star_model = self._parse_star(star_model)
-        Planet._debug_print(
-            f"Using star model with {self.star_model['mass']:.2f} solar masses",
-        )
+        self.model_args = {} if model_args is None else model_args
         
-        # Validate planet models
-        models_valid = all([
-            callable(envelope_model),
-            callable(core_model)
-        ])
-        assert models_valid, "Invalid model"
-        self.envelope_model  = wrap_callback(envelope_model)
-        self.core_model      = wrap_callback(core_model)
-        self.model_args      = model_args
+        if star_model is not None:
+            self.star_model = self._parse_star(star_model)
+            Planet._debug_print(
+                f"Using star model with {self.star_model['mass']:.2f} solar masses",
+            )
+        
+        if envelope_model is not None:
+            assert callable(envelope_model), "Envelope model must be a function"
+            self.envelope_model  = wrap_callback(envelope_model)
+            if hasattr(envelope_model, "__name__"):
+                Planet._debug_print(f"Using envelope model {envelope_model.__name__}")
 
-        default_mloss = lambda *args, **kwargs: 0.0
-        default_mloss.__name__ = "default_mass_loss(*args,**kwargs) -> 0.0"
+        if core_model is not None:
+            assert callable(core_model), "Core model must be a function"
+            self.core_model  = wrap_callback(core_model)
+            if hasattr(core_model, "__name__"):
+                Planet._debug_print(f"Using core model {core_model.__name__}")
 
-        if mass_loss_model is None:
-            self.mass_loss_model = wrap_callback(default_mloss)
-        else:
-            self.mass_loss_model = wrap_callback(mass_loss_model)
+        if mass_loss_model is not None:
+            assert callable(mass_loss_model), "Mass loss model must be a function"
+            self.mass_loss_model  = wrap_callback(mass_loss_model)
+            if hasattr(mass_loss_model, "__name__"):
+                Planet._debug_print(f"Using mass loss model {mass_loss_model.__name__}")
 
-        Planet._debug_print(
-            "Using models",
-            f"'{self.envelope_model.__name__}' for the envelope,",
-            f"'{self.mass_loss_model.__name__}' for mass loss, and",
-            f"'{self.core_model.__name__}' for the core",
-        )
+        return self
 
-    def use_models(self, other: 'Planet') -> typing.NoReturn:
+    def use_models(self, other: 'Planet') -> 'Planet':
         """ Copies planet and stellar models from another Planet instance"""
         self.star_model      = other.star_model
         self.envelope_model  = other.envelope_model
         self.mass_loss_model = other.mass_loss_model
         self.core_model      = other.core_model
         self.model_args      = other.model_args
+        return self
     
     def solve_structure(
             self,
@@ -492,6 +492,11 @@ class Planet:
             and a row for the values at each simulation step.
         """
         assert start > 0.0 and end > 0.0, "Invalid initial or final ages"
+
+        # Default evaporation model always returns a mass loss rate of zero
+        if self.mass_loss_model is None:
+            self.mass_loss_model = lambda *args, **kwargs: 0.0
+            self.mass_loss_model.__name__ = "zero_mass_loss"
         
         # Solve state at starting age
         self.initial_state = self.solve_structure(age=start)
