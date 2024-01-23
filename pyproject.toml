@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "photoevolver"
-version = "2.0"
+version = "2.2"
 authors = [
     {name = "Jorge Fernandez", email = "Jorge.Fernandez-Fernandez@warwick.ac.uk"},
 ]

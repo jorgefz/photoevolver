@@ -1,7 +1,12 @@
 
 # photoevolver
 
-# v2.1 (WIP)
+# v2.2
+
+- `Planet.set_models` returns its own instance, enabling chaining of `Planet` methods.
+- Replaced `Planet._parse_star` with public static function `Planet.parse_star`.
+
+# v2.1
 
 - Added github banners
 - Moved version history to CHANGELOG
