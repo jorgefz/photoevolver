@@ -17,7 +17,7 @@ __model_data_dir = os.path.dirname(os.path.realpath(__file__)) + "/model_data/"
 
 __model_data_cache_zeng19 :dict[interp1d|None] = {
     'rock'       : None, # 100% MgSiO2
-    'earth'      : None, # 33% Fe + 67% MgSiO2 (Earth-like)
+    'rock_iron'  : None, # 33% Fe + 67% MgSiO2 (Earth-like)
     'iron'       : None, # 100% Fe
     'water'      : None, # 100% H2O
     'water_rock' : None  # 50% H2O + 50% Earth-like
@@ -48,15 +48,15 @@ def core_zeng19_iron(mcore: float, **kwargs) -> float:
     return float(model(mcore))
 
 
-def core_zeng19_earth_like(mcore: float, **kwargs) -> float:
+def core_zeng19_rock_iron(mcore: float, **kwargs) -> float:
     """ Calculates planet radius from its mass assuming an Earth-like (1/3 iron, 2/3 rock) composition using the model by Zeng+19 """
-    if __model_data_cache_zeng19['earth'] is None:
-        data = np.loadtxt(__model_data_dir + 'zeng19/core_zeng19_earth.csv', delimiter = ',')
+    if __model_data_cache_zeng19['rock_iron'] is None:
+        data = np.loadtxt(__model_data_dir + 'zeng19/core_zeng19_rock_iron.csv', delimiter = ',')
         masses, radii = data.T
-        __model_data_cache_zeng19['earth'] = interp1d(x = masses, y = radii,
+        __model_data_cache_zeng19['rock_iron'] = interp1d(x = masses, y = radii,
             kind = 'cubic', fill_value="extrapolate", assume_sorted = True)
 
-    model = __model_data_cache_zeng19['earth']
+    model = __model_data_cache_zeng19['rock_iron']
     return float(model(mcore))
 
 
