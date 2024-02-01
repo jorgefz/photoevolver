@@ -17,7 +17,7 @@ import numpy as np
 ## Added by Jorge for relative paths
 import os
 PyDir = os.path.dirname(os.path.realpath(__file__)) + '/'
-__teq_sma_dataset = np.loadtxt(PyDir+'teq-sma.txt');
+__teq_sma_dataset = np.loadtxt(PyDir+'teq-sma.txt')
 
 
 ## astronomical constants        
