@@ -147,18 +147,20 @@ def keplers_third_law(
     raise ValueError("Specify either orbital period or separation")
 
 
-def temp_eq(fbol: float) -> float:
-    """Calculate equilibrium temperature of a planet.
+def temp_eq(fbol: float, albedo :float = 0.2) -> float:
+    """
+    Calculate equilibrium temperature of a planet.
 
     Parameters
     ----------
     fbol    : float, bolometric flux in erg/s/cm^2
+    albedo  : float, Bond albedo, fraction of incident power reflected back into space
 
     Returns
     -------
     t_eq    : float, equilibrium temperature in K
     """
-    return ( SI_flux(fbol) / (4.0 * constants.sigma_sb.value))**(0.25)
+    return ( SI_flux(fbol) * (1 - albedo) / (4.0 * constants.sigma_sb.value))**(0.25)
 
 
 def planet_density(mass :float, radius :float) -> float:
