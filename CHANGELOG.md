@@ -1,6 +1,11 @@
 
 # photoevolver
 
+# v2.3
+- Removed usage of pow in compile-time constant in C extension, as it is a GCC extension but Clang does not allow it.
+- Added Zeng+19 core models.
+- Added albedo to equation of equilibrium temperature
+
 # v2.2
 
 - `Planet.set_models` returns its own instance, enabling chaining of `Planet` methods.
