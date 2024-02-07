@@ -110,7 +110,7 @@ def test_keplers_third_law():
 def test_temp_eq():
     """Tests photoevolver.physics.temp_eq"""
     nominal_teq = 279 # K - blackbody equilibrium temperature of Earth
-    result_teq  = physics.temp_eq(physics.fbol_earth())
+    result_teq  = physics.temp_eq(physics.fbol_earth(), albedo = 0)
     assert np.isclose(nominal_teq, result_teq, rtol=0.01)
 
 def test_planet_density():
