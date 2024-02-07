@@ -190,11 +190,11 @@ typedef struct params{
 } OW17Params;
 
 static OW17Params ow17params = {
-    .alpha = 0.68, // pressure dependence of opacity
-    .beta = 0.45, // temperature dependence of opacity
-    .gamma = 5.0/3.0, // ratio of specific heat capacities
-    .kappa0 = pow(10.0, -7.32), // opacity constant
-    .mu = 2.35 * HMASS_CGS // solar metallicity gas
+    .alpha  = 0.68,       // pressure dependence of opacity
+    .beta   = 0.45,       // temperature dependence of opacity
+    .gamma  = 5.0/3.0,    // ratio of specific heat capacities
+    .kappa0 = 4.7863e-8,  // pow(10.0, -7.32), // opacity constant
+    .mu     = 2.35 * HMASS_CGS // solar metallicity gas
 };
 
 
