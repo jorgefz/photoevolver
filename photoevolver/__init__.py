@@ -27,5 +27,3 @@ from photoevolver.evostate import wrap_callback
 from photoevolver import legacy 
 from photoevolver import dev
 
-
-

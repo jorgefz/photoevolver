@@ -6,7 +6,7 @@ import astropy.units as units
 import astropy.constants as const
 from scipy.interpolate import griddata, LinearNDInterpolator
 
-from ..K18grid import interpolator as interpolator
+from .K18grid import interpolator as interpolator
 
 
 _stdout = sys.stdout

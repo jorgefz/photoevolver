@@ -7,4 +7,4 @@ from photoevolver.legacy import plotter
 from photoevolver.legacy.startable import StarTable
 # from photoevolver.legacy.libcfn import libcfn
 from photoevolver.legacy import utils
-from photoevolver.K18grid import interpolator as K18grid
+# from photoevolver.K18grid import interpolator as K18grid
