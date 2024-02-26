@@ -149,6 +149,42 @@ def rotation_activity_johnstone21(
     return c2 * np.power(ro, p2)
 
 
+def rossby_wright11(prot :float, mstar :float = None, vk :float = None):
+    """
+    Estimates the Rossby number of a star in days.
+    Requires its rotation period and either its V-K colour or its mass.
+    The empirical relation comes from the Wright et al 2011 paper:
+            (https://ui.adsabs.harvard.edu/abs/2011ApJ...743...48W/abstract)
+
+    Parameters
+    ----------
+    prot     : float, rotation period in days
+    mstar    : float (optional), stellar mass in solar masses
+    vk       : float (optional), V-K color index
+
+    Returns:
+    --------
+    rossby  : float, rossby number
+    """
+    # vk_bounds = [1.1, 6.6]
+    # mstar_bounds = [0.09, 1.36]
+
+    if mstar is not None:
+        log_tconv = 1.16 - 1.49*np.log10(mstar) - 0.54*np.log10(mstar)**2
+        return prot / (10**log_tconv) 
+
+    if vk is None:
+        raise ValueError("[rossby_wright11] Provide either mstar or vk colour.")
+
+    # np.where works like an element-wise 'if' statement for arrays
+    vk = np.array(vk)
+    log_tconv = np.where(vk <= 3.5,
+        0.73 + 0.22*vk,
+        -2.16 + 1.5*vk - 0.13*vk**2
+    )
+    return prot/(10**log_tconv)
+
+
 
 class star_pecaut13:
 	"""

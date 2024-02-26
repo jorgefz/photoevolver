@@ -2,7 +2,8 @@ from photoevolver.models.star import (
     star_spada13, star_pecaut13, euv_king18,
     rotation_activity_wright11,
     rotation_activity_wright18,
-    rotation_activity_johnstone21
+    rotation_activity_johnstone21,
+    rossby_wright11
 )
 from photoevolver.models.misc import (
     radius_valley_vaneylen18,
