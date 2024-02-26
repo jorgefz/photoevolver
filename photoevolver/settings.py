@@ -1,8 +1,10 @@
+import os
 
-
+# Root path of the project
+_ROOT_DIR = os.path.dirname(os.path.realpath(__file__))
+_MODEL_DATA_DIR = _ROOT_DIR + '/model_data/'
 
 # Global parameters
-
 class settings:
 	"""
 	verbose: bool				Prints simulation state on each time step
