@@ -139,49 +139,25 @@ import pandas as pd
 from scipy.interpolate import interp1d as ScipyInterp1d
 import io
 
+from photoevolver.settings import deprecated
+from photoevolver.models.star import star_pecaut13
 
 class StarTable:
 	"""
-	Interpolates the stellar sequences by Mamajek et al.
+	Proxy for photoevolver.models.star_pecaut13
 	"""
-
-	_dset :pd.DataFrame = pd.read_csv(io.StringIO(_startable_source))
-	_fn_cache :dict[dict[callable]] = {}
-
+	@deprecated
 	def fields() -> list[str]:
-		"""
-		Returns a list of stellar parameters that can be interpolated
-		"""
-		return StarTable._dset.columns.tolist()
+		return star_pecaut13.fields()
 
+	@deprecated
 	def spt(field: str, value: float) -> str:
-		"""
-		Estimates the spectral type from a given parameter.
-		"""
-		if field not in StarTable.fields():
-			raise KeyError(f"[startable] Unknown field '{field}'")
-		idx = StarTable._dset[field].sub(value).abs().idxmin()
-		row = StarTable._dset.loc[[idx]]
-		return row['SpT'].iloc[0]
+		return star_pecaut13.spt(field, value)
 
+	@deprecated
 	def interpolate(field: str, value: float) -> dict:
-		"""
-		Interpolates all stellar parameters given a value for one of them.
-		Spectral type is not supported as an input field.
-		"""
-		if field not in StarTable.fields():
-			raise KeyError(f"[startable] Unknown field '{field}'")
+		return star_pecaut13.interpolate(field, value)
 
-		fields = StarTable.fields()[1:-1]
-		row = {
-			key: StarTable.get(key, field, value)
-			for key in fields
-		}
-		row['SpT'] = StarTable.spt(field, value)
-		return row
-
+	@deprecated
 	def get(field :str, using :str, value :str) -> float:
-		from_col   = StarTable._dset[using].to_numpy()
-		to_col = StarTable._dset[field].to_numpy()
-		fn = ScipyInterp1d(x = from_col, y = to_col, kind='linear')
-		return float(fn(value))
+		return star_pecaut13.interpolate(field, using, value)
