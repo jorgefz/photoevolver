@@ -4,7 +4,7 @@ Collection of physical equations and quantities.
 
 import numpy as np
 from astropy import units, constants
-
+from photoevolver.settings import deprecated
 
 def fbol_earth() -> float:
     """Returns the bolometric flux on Earth in erg/s/cm^2"""
@@ -101,6 +101,7 @@ def get_luminosity(
         )
     return flux*(4.0*np.pi*(conv*dist)**2)
 
+
 def keplers_third_law(
         big_mass   :float,
         small_mass :float = 0.0,
@@ -196,7 +197,7 @@ def prot_from_vsini(vsini :float, rstar :float) -> float:
     k = (constants.R_sun * units.s).to("km day").value
     return k * 2.0 * np.pi * rstar / vsini
 
-
+@deprecated
 def rossby_number(
         vkcolor  :float = 0,
         prot     :float = 0,
@@ -235,7 +236,7 @@ def rossby_number(
         return (rossby,turnover)
     return rossby
 
-
+@deprecated
 def rossby_number_from_mass(
         mass    :float,
         prot    :float,

@@ -15,7 +15,6 @@ def deprecated(func :callable):
 		return func(*args, **kwargs)
 	return wrapper
 
-
 verbose = False # Prints simulation state on each time step
 warnings_as_errors = False #Any warning raised will stop the simulation.
 no_nans = False # If true, when a NaN is produced during simulation, the last non-NaN value of that parameter is used onwards.
