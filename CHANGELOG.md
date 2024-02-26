@@ -1,6 +1,18 @@
 
 # photoevolver
 
+# To do
+- Refactor `star_pecaut13` model
+- Move core powered mass loss model from legacy to models and refactor
+
+# v2.4
+- Moved models to subfolder and separated them into files
+- Added `deprecated` decorator
+- Added Spada+13 and Pecaut+13 stellar models
+- Copied Rossby number functions from physics file to models folder, and marked old ones as deprecated.
+- Deprecated `StarTable` in dev folder, as it is a proxy of `star_pecaut13`.
+- Moved Kubyshkina+18 model dataset to model data folder
+
 # v2.3
 - Removed usage of pow in compile-time constant in C extension, as it is a GCC extension but Clang does not allow it.
 - Added Zeng+19 core models.
