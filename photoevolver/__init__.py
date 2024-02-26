@@ -12,7 +12,7 @@ from .version import __version__, __author__
 import os
 import platform
 
-from photoevolver.settings import settings
+from photoevolver import settings
 # from photoevolver.startable import StarTable
 
 from photoevolver import (
