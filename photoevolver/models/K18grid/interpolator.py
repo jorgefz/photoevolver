@@ -15,9 +15,8 @@ International Public License (https://creativecommons.org/licenses/by-nc/4.0/).
 import numpy as np
 
 ## Added by Jorge for relative paths
-import os
-PyDir = os.path.dirname(os.path.realpath(__file__)) + '/'
-__teq_sma_dataset = np.loadtxt(PyDir+'teq-sma.txt')
+from photoevolver.settings import _MODEL_DATA_DIR
+__teq_sma_dataset = np.loadtxt(_MODEL_DATA_DIR+'kubyshkina18/teq-sma.txt')
 
 
 ## astronomical constants        
@@ -207,7 +206,7 @@ def INTERPOL(Mss,EUV,T_i,r_i,m_i, dataset_file = None):   #,NTEST
         global __txtdata
         if dataset_file is None:
             if __txtdata is None: 
-                __txtdata = np.loadtxt(PyDir+'input_interpol_26-03-2021.dat');
+                __txtdata = np.loadtxt(_MODEL_DATA_DIR+'kubyshkina18/input_interpol_26-03-2021.dat');
             input0 = __txtdata
         else: input0 = np.loadtxt(PyDir + dataset_file)
         
