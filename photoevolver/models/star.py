@@ -57,98 +57,6 @@ def euv_king18(
     return leuv
 
 
-@np.vectorize
-def rotation_activity_wright11(
-        prot  :float,
-        mstar :float,
-    ) -> float:
-    """
-    Converts rotation period to X-ray activity
-    using the rotation-activity relation by Wright et al. 2011
-    for convective-radiative stars (FGK and early M dwarfs).
-
-    Parameters
-    ----------
-    prot    :float, Spin period of the star in days
-    mstar   :float, Mass of the star in solar masses
-    
-    Returns
-    -------
-    xray_activity :float, X-ray activity (Lx/Lbol)
-    """
-    rossn = physics.rossby_number_from_mass(mass = mstar, prot = prot)
-    rossn_sat = 0.13
-    rx_sat    = 10**(-3.13)
-    pow_exp   = -2.18
-    norm = rx_sat / np.power(rossn_sat, pow_exp)
-    if rossn <= rossn_sat:
-        return rx_sat
-    return norm * np.power(rossn, pow_exp)
-
-
-@np.vectorize
-def rotation_activity_wright18(
-        prot  :float,
-        mstar :float,
-    ) -> float:
-    """
-    Converts rotation period to X-ray activity
-    using the rotation-activity relation by Wright et al. 2018
-    for fully convective stars (late M dwarfs).
-
-    Parameters
-    ----------
-    prot    :float, Spin period of the star in days
-    mstar   :float, Mass of the star in solar masses
-    
-    Returns
-    -------
-    xray_activity :float, X-ray activity (Lx/Lbol)
-    """
-    rossn = physics.rossby_number_from_mass(mass = mstar, prot = prot)
-    rossn_sat = 0.14
-    rx_sat    = 10**(-3.05)
-    pow_exp   = -2.3
-    norm = rx_sat / np.power(rossn_sat, pow_exp)
-    if rossn <= rossn_sat:
-        return rx_sat
-    return norm * np.power(rossn, pow_exp)
-
-
-@np.vectorize
-def rotation_activity_johnstone21(
-        prot  :float,
-        mstar :float,
-    ) -> float:
-    """
-    Converts rotation period to X-ray activity
-    using the rotation-activity relation by Johnstone et al. 2021
-    for main sequence stars.
-
-    Note: Johnstone+21 use the period-rossby number relation
-    from Spada et al. (2013), which is very similar to the one
-    that the `rossby_number_from_mass` function and
-    Wright et al. (2011) use.
-
-    Parameters
-    ----------
-    prot    :float, Spin period of the star in days
-    mstar   :float, Mass of the star in solar masses
-
-    Returns
-    -------
-    xray_activity :float, X-ray activity (Lx/Lbol)
-    """
-    p1, p2 = -0.135, -1.889
-    ro_sat, rx_sat = 0.0605, 5.135e-4
-    c1 = rx_sat/np.power(ro_sat,p1)
-    c2 = rx_sat/np.power(ro_sat,p2)
-    ro = physics.rossby_number_from_mass(mass = mstar, prot = prot)    
-    if ro <= ro_sat:
-        return c1 * np.power(ro, p1)
-    return c2 * np.power(ro, p2)
-
-
 def rossby_wright11(prot :float, mstar :float = None, vk :float = None):
     """
     Estimates the Rossby number of a star in days.
@@ -183,6 +91,101 @@ def rossby_wright11(prot :float, mstar :float = None, vk :float = None):
         -2.16 + 1.5*vk - 0.13*vk**2
     )
     return prot/(10**log_tconv)
+
+
+
+@np.vectorize
+def rotation_activity_wright11(
+        prot  :float,
+        mstar :float,
+    ) -> float:
+    """
+    Converts rotation period to X-ray activity
+    using the rotation-activity relation by Wright et al. 2011
+    for convective-radiative stars (FGK and early M dwarfs).
+
+    Parameters
+    ----------
+    prot    :float, Spin period of the star in days
+    mstar   :float, Mass of the star in solar masses
+    
+    Returns
+    -------
+    xray_activity :float, X-ray activity (Lx/Lbol)
+    """
+    rossn = rossby_wright11(mstar = mstar, prot = prot)
+    rossn_sat = 0.13
+    rx_sat    = 10**(-3.13)
+    pow_exp   = -2.18
+    norm = rx_sat / np.power(rossn_sat, pow_exp)
+    if rossn <= rossn_sat:
+        return rx_sat
+    return norm * np.power(rossn, pow_exp)
+
+
+@np.vectorize
+def rotation_activity_wright18(
+        prot  :float,
+        mstar :float,
+    ) -> float:
+    """
+    Converts rotation period to X-ray activity
+    using the rotation-activity relation by Wright et al. 2018
+    for fully convective stars (late M dwarfs).
+
+    Parameters
+    ----------
+    prot    :float, Spin period of the star in days
+    mstar   :float, Mass of the star in solar masses
+    
+    Returns
+    -------
+    xray_activity :float, X-ray activity (Lx/Lbol)
+    """
+    rossn = rossby_wright11(mstar = mstar, prot = prot)
+    rossn_sat = 0.14
+    rx_sat    = 10**(-3.05)
+    pow_exp   = -2.3
+    norm = rx_sat / np.power(rossn_sat, pow_exp)
+    if rossn <= rossn_sat:
+        return rx_sat
+    return norm * np.power(rossn, pow_exp)
+
+
+@np.vectorize
+def rotation_activity_johnstone21(
+        prot  :float,
+        mstar :float,
+        age   :float = 1000 # Myr
+    ) -> float:
+    """
+    Converts rotation period to X-ray activity
+    using the rotation-activity relation by Johnstone et al. 2021
+    for main sequence stars.
+
+    Note: Johnstone+21 use the period-rossby number relation
+    from Spada et al. (2013), which is very similar to the one
+    that the `rossby_number_from_mass` function and
+    Wright et al. (2011) use.
+
+    Parameters
+    ----------
+    prot    :float, Spin period of the star in days
+    mstar   :float, Mass of the star in solar masses
+    age     :float, Age in Myr
+
+    Returns
+    -------
+    xray_activity :float, X-ray activity (Lx/Lbol)
+    """
+    p1, p2 = -0.135, -1.889
+    ro_sat, rx_sat = 0.0605, 5.135e-4
+    c1 = rx_sat/np.power(ro_sat,p1)
+    c2 = rx_sat/np.power(ro_sat,p2)
+    ro = star_spada13.rossby(mstar = mstar, prot = prot, age = age)
+    if ro <= ro_sat:
+        return c1 * np.power(ro, p1)
+    return c2 * np.power(ro, p2)
 
 
 
