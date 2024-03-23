@@ -265,10 +265,16 @@ class star_spada13:
 	Calculate Lbol, TauConv, Teff, and Rstar using Mstar and Age.
 	"""
 
-	_table		:pd.DataFrame = pd.read_hdf(_MODEL_DATA_DIR+'spada13/Spada2013.hdf5')
-	_default_age  :float		= 2000 # Myr
-	_fields	   :list[str]	= ['Lbol', 'TauConv', 'Teff', 'Rstar']
-	_interp_cache :dict		 = {}
+	_table		  :pd.DataFrame = None
+	_default_age  :float	    = 2000 # Myr
+	_fields	      :list[str]	= ['Lbol', 'TauConv', 'Teff', 'Rstar']
+	_interp_cache :dict		    = {}
+
+	@staticmethod
+	def _check_dataset_loaded():
+		if star_spada13._table is None:
+			star_spada13._table = pd.read_hdf(_MODEL_DATA_DIR+'spada13/Spada2013.hdf5')
+
 
 	@staticmethod
 	def get(field :str, mstar :float, age :float = _default_age):
@@ -286,6 +292,8 @@ class star_spada13:
 		mstar   :float|list, stellar mass in Msun.
 		age	 :float|list (optional), age of the star in Myr.
 		"""
+		star_spada13._check_dataset_loaded()
+		
 		if field not in star_spada13._fields:
 			return None
 		
