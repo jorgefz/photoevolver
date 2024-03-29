@@ -460,11 +460,12 @@ class Planet:
     
     def evolve(
             self,
-            start  :float,
-            end    :float,
-            step   :float = 0.01,
-            method :str   = None,
-            progressbar : bool = False,
+            start       : float,
+            end         : float,
+            step        : float = 0.01,
+            method      : str   = None,
+            progressbar : bool  = False,
+            min_fenv    : float = 1e-5,
             **kwargs
         ) -> pd.DataFrame:
         """
@@ -485,6 +486,9 @@ class Planet:
             For the RK45 method, this is the initial step size.
         progressbar : bool
             Displays a progress bar of the simulation using the `tqdm` module.
+        min_fenv    : float
+            Minimum envelope mass fraction under which a planet
+            is considered to have no atmosphere.
 
         Returns
         -------
@@ -506,7 +510,7 @@ class Planet:
 
         evo_states :list[EvoState] = []
         evo_states.append(state.copy())
-        env_limit = 1 + 1e-5
+        env_limit = 1 + min_fenv
 
         Planet._debug_print(
             f"Integrating from t={start:.2f} to t={end:.2f} Myr",
