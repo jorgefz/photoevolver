@@ -302,6 +302,16 @@ class Planet:
         self.core_model      :callable = None   # :Callable[params:float] -> float
         self.model_args      :dict     = None   # :dict(Any)
     
+    def __repr__(self):
+        params = 'mass', 'radius', 'period', 'mcore', 'rcore', 'fenv', 'renv'
+        values = { k: self.initial_state.asdict()[k] for k in params }
+        values = { k: v if v is not None else np.nan for k,v in values.items() }
+        s = ", ".join([f"{k}={v:.2f}" for k,v in values.items()])
+        return f"Planet({s})"
+
+    def __str__(self):
+        return self.__repr__()
+
     ###################
     # Public Methods  #
     ###################
