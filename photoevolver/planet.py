@@ -405,7 +405,8 @@ class Planet:
     def solve_structure(
             self,
             age    :float,
-            errors :bool = False
+            errors :bool = False,
+            error_kw :dict = None
         ) -> EvoState:
         """
         Solves for the internal structure of the planet
@@ -416,6 +417,22 @@ class Planet:
         # TODO: Should work with ufloats
         assert self.star_model and self.envelope_model and self.core_model, \
             "Models have not been set!"
+
+        # Run version that supports uncertainties
+        # Not to be used for evolving!
+        if errors is True:
+            result, success = solve_with_errors(
+                planet = self,
+                age = age,
+                model_kw = self.model_args,
+                error_kw = error_kw  
+            )
+            if success is False:
+                Planet._debug_print(
+                    "Warning! Failed to solve for planet structure with uncertainties.",
+                    f"-> {result}"
+                )
+            return result
 
         state       = self.initial_state.copy()
         state.mstar = self.star_model['mass']
@@ -446,7 +463,7 @@ class Planet:
         if state.mass and state.radius:
             assert state.mass   > 0.0, "Planet mass must be over zero"
             assert state.radius > 0.0, "Planet radius must be over zero"
-            self._solve_from_mass_radius(state, errors=errors)
+            state = self._solve_from_mass_radius(state, errors=errors)
             return state
         
         # Core and fenv scenario
@@ -470,7 +487,7 @@ class Planet:
                 "Either mass and radius,"
                 "or core and envelope mass must be provided"
             )
-    
+
     def evolve(
             self,
             start       : float,
