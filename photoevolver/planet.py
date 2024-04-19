@@ -303,13 +303,16 @@ class Planet:
         self.model_args      :dict     = None   # :dict(Any)
     
     def __repr__(self):
+        """ Returns the string representation of the physical parameters of a Planet """
         params = 'mass', 'radius', 'period', 'mcore', 'rcore', 'fenv', 'renv'
-        values = { k: self.initial_state.asdict()[k] for k in params }
-        values = { k: v if v is not None else np.nan for k,v in values.items() }
-        s = ", ".join([f"{k}={v:.2f}" for k,v in values.items()])
+        state  = self.initial_state.asdict()
+        values = { k: state[k] for k in params }
+        fmted  = [ k + "=" + (str(v) if v is None else f"{v:.2f}") for k,v in values.items() ]
+        s = ", ".join(fmted)
         return f"Planet({s})"
 
     def __str__(self):
+        """ Returns the string representation of the physical parameters of a Planet """
         return self.__repr__()
 
     ###################
