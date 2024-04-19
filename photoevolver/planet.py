@@ -413,8 +413,17 @@ class Planet:
         assuming a core and envelope as distinct layers,
         using either the planet's mass and radius,
         or the core (mass or radius) and the envelope mass.
+
+        Parameters
+        ----------
+            age      :float, Age in Myr of the planet, used to determine its core heat.
+            errors   :bool, whether to solve the structre with uncertainties.
+            error_kw :dict, arguments to pass to models to signal use of uncertainties.
+
+        Returns
+        -------
+            state :EvoState, solved internal structure of the planet
         """
-        # TODO: Should work with ufloats
         assert self.star_model and self.envelope_model and self.core_model, \
             "Models have not been set!"
 
