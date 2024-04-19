@@ -322,7 +322,9 @@ def evolve_batch(
     results = []
     with ProcessPoolExecutor(max_workers = max_workers) as pool:
         jobs = []
-        for pl, kwargs in zip(planets, evo_args):
+        for i, (pl, kwargs) in enumerate(zip(planets, evo_args)):
+            kwargs = kwargs.copy()
+            kwargs.setdefault("tqdm_position", i)
             job = pool.submit(Planet.evolve, pl, **kwargs)
             jobs.append(job)
          
@@ -605,6 +607,8 @@ class Planet:
         min_fenv    : float
             Minimum envelope mass fraction under which a planet
             is considered to have no atmosphere.
+        tqdm_position : int
+            Position of the tqdm progressbar. Useful when running multiple progresbars.
 
         Returns
         -------
@@ -655,6 +659,7 @@ class Planet:
             t_end    = end,
             progress = progressbar,
             func_kw  = {'env_limit': env_limit},
+            tqdm_position = kwargs.get("tqdm_position", 0),
             **integ_args
         )
         
