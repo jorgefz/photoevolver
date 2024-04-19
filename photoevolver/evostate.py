@@ -3,7 +3,7 @@ import dataclasses as dataclass
 import numpy as np
 import typing
 import copy
-import abc
+import functools
 
 @dataclass.dataclass(slots=True)
 class EvoState:
@@ -93,6 +93,10 @@ class EvoState:
         return not any(x is None or np.isnan(x) for x in values)
 
 
+def _model_wrapper(func :callable, state :EvoState, model_kw :dict):
+    """ Wraps a model function to take an EvoState """
+    return func(**state.asdict(), **model_kw)
+
 def wrap_callback(fn :typing.Callable[typing.Any,float]
     ) -> typing.Callable[['EvoState',dict],typing.Any]:
     """
@@ -133,7 +137,7 @@ def wrap_callback(fn :typing.Callable[typing.Any,float]
     rcore = rocky_fn(state, model_args)
     ```
     """
-    wrapper = lambda state, model_kw: fn(**state.asdict(), **model_kw)
+    wrapper = functools.partial(_model_wrapper, fn)
     wrapper.__name__ = fn.__name__
     wrapper.__doc__  = fn.__doc__
     return wrapper
