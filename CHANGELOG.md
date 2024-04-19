@@ -13,6 +13,7 @@
 - Deprecated `StarTable` in dev folder, as it is a proxy of `star_pecaut13`.
 - Moved Kubyshkina+18 model dataset to model data folder
 - Fixed bug with `rotation_activity_johnstone21` using incorrect model Rossby number.
+- Added `evolve_batch` to run multiple sims in parallel
 
 # v2.3
 - Removed usage of pow in compile-time constant in C extension, as it is a GCC extension but Clang does not allow it.
