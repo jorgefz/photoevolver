@@ -45,8 +45,9 @@ class IntegratorBase(abc.ABC):
         self.t_end     :float    = t_end
         self.direction :int  = 1 if t_start < t_end else -1
         self.do_pbar   :bool = progress
-        self.pbar :tqdm.tqdm = None
+        self.pbar      :tqdm.tqdm = None
         self.func_kw = func_kw if func_kw else dict()
+        self._pbar_position :int = kwargs.get('tqdm_position', 0)
 
     def _init_pbar(self) -> bool:
         """Initialises progress bar"""
@@ -55,7 +56,8 @@ class IntegratorBase(abc.ABC):
                 + r"{n:.3f}/{total_fmt} [{elapsed}<{remaining}]")
         self.pbar = tqdm.tqdm(
             total = abs(self.t_start-self.t_end),
-            bar_format = fmt
+            bar_format = fmt,
+            position = self._pbar_position
         )
         return True
     
