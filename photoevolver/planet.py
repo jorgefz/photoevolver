@@ -3,22 +3,47 @@ import pandas as pd
 import dataclasses as dataclass
 import numpy as np
 import typing
-import copy
-import abc
+import functools
 from astropy import units, constants
-import uncertainties as uncert
-from uncertainties import ufloat
-from uncertainties import wrap as uwrap
-from scipy.optimize import (
-    least_squares as scipy_leastsq,
-    fsolve as scipy_fsolve
-)
+from uncertainties import ufloat, wrap as uwrap
+from scipy.optimize import least_squares as scipy_leastsq
 import tqdm
 import warnings
+from concurrent.futures import ProcessPoolExecutor
 
 from . import physics, utils
 from .integrator import EulerIntegrator, RK45Integrator
 from .evostate import EvoState, wrap_callback
+
+
+def _star_model_wrapper(method :callable, state :EvoState, kwargs :dict):
+    """ Wraps mors.Star functions to take an EvoState """
+    return method(state.age)
+
+def parse_star(star :dict|typing.Any) -> dict:
+    """
+    Converts an input stellar model into internal format.
+    """
+    if isinstance(star, dict):
+        # Stellar tracks from functions
+        if set(star) == set(['mass','lx','leuv','lbol']):
+            valid_format = all([
+                callable(star['lx']),   callable(star['leuv']),
+                callable(star['lbol']), star['mass'] > 0.0
+            ])
+            assert valid_format, "Invalid format for stellar model"
+            return star
+        raise ValueError("Invalid format for stellar model")
+    
+    elif utils.is_mors_star(star):
+        return dict(
+            mass = star.Mstar,
+            lx   = functools.partial(_star_model_wrapper, star.Lx),
+            leuv = functools.partial(_star_model_wrapper, star.Leuv),
+            lbol = functools.partial(_star_model_wrapper, star.Lbol),
+        )
+    
+    raise ValueError("Invalid format for stellar model")
 
 
 def solve_core_model(
@@ -253,6 +278,58 @@ def solve_with_errors(
     state.renv   = state.radius - state.rcore
     return state.asdict(), solver_success
 
+
+def evolve_batch(
+        planets     :list['ph.Planet'],
+        evo_args    :list[dict],
+        max_workers :int = 4
+    ) -> list[pd.DataFrame]:
+    """
+    Runs simulations of planets asynchronously.
+
+    Parameters
+    ----------
+    planets: list[ph.Planet]
+            Planets to evolve (with models set).
+    evo_args: list[dict]
+            Keyword arguments to pass to Planet.evolve on each case.
+            Must have the same length as `planets`.
+            See `Planet.evolve` for input parameters.
+
+    Returns
+    -------
+    evos :list[pd.DataFrame],
+        Results from the simulations of each planet
+        in the same order in which they were passed as input.
+
+    Examples
+    --------
+        # (1) Running multiple planets
+        planets = [
+            ph.Planet(mass=mass, radius=2, period=10).set_models(...)
+            for mass in np.linspace(1, 5, num=5)
+        ]
+        evo_args = [{'start':10, 'end':1000} for i in range(len(planets))]
+        evos = ph.planet.evolve_batch(planets = planets, evo_args = evo_args)
+
+        # (2) Running the same planet forward and backwards in time
+        age = 150 # Myr
+        planet = ph.Planet(mass=7, radius=2, period=10).set_models(...)
+        evo_args = [{'start':age, 'end':10}, {'start':age, 'end':1000}]
+        past, future = ph.planet.evolve_batch(planets = [planet,planet], evo_args = evo_args)
+
+    """
+    results = []
+    with ProcessPoolExecutor(max_workers = max_workers) as pool:
+        jobs = []
+        for pl, kwargs in zip(planets, evo_args):
+            job = pool.submit(Planet.evolve, pl, **kwargs)
+            jobs.append(job)
+         
+        for job in jobs:
+            results.append( job.result() )
+    
+    return results
 
 
 class Planet:
@@ -587,8 +664,7 @@ class Planet:
 
         Planet._debug_print(f"Finished integration")
         df = pd.DataFrame([state.asdict() for state in evo_states])
-        return df
-
+        return df    
 
     ###################
     # Private Methods #
@@ -677,29 +753,5 @@ class Planet:
         if Planet.debug is True:
             print(f"[photoevolver.Planet] ", *args)
 
-    @staticmethod
-    def parse_star(star :dict|typing.Any) -> dict:
-        """
-        Converts an input stellar model into internal format.
-        """
-        if isinstance(star, dict):
-            # Stellar tracks from functions
-            if set(star) == set(['mass','lx','leuv','lbol']):
-                valid_format = all([
-                    callable(star['lx']),   callable(star['leuv']),
-                    callable(star['lbol']), star['mass'] > 0.0
-                ])
-                assert valid_format, "Invalid format for stellar model"
-                return star
-            raise ValueError("Invalid format for stellar model")
-        
-        elif utils.is_mors_star(star):
-            return dict(
-                mass = star.Mstar,
-                lx   = lambda state,kw: star.Lx(state.age),
-                leuv = lambda state,kw: star.Leuv(state.age),
-                lbol = lambda state,kw: star.Lbol(state.age),
-            )
-        
-        raise ValueError("Invalid format for stellar model")
+    parse_star = staticmethod(parse_star)
 
