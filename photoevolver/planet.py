@@ -399,10 +399,17 @@ class Planet:
     ###################
     
     def set_models(self,
-            star_model      :dict|typing.Any             = None,
-            envelope_model  :typing.Callable[..., float] = None,
-            core_model      :typing.Callable[..., float] = None,
-            mass_loss_model :typing.Callable[..., float] = None,
+            star  :dict|typing.Any = None,
+            env   :callable        = None,
+            core  :callable        = None,
+            mloss :callable        = None,
+            args  :dict            = None,
+
+            # Legacy parameter names
+            star_model      :dict|typing.Any = None,
+            envelope_model  :callable = None,
+            core_model      :callable = None,
+            mass_loss_model :callable = None,
             model_args      :dict = None
         ) -> 'Planet':
         """
@@ -431,44 +438,51 @@ class Planet:
             - Mors.Star object,
                 see https://github.com/ColinPhilipJohnstone/Mors
         
-        envelope  :Callable(EvoState,dict) -> float, optional
+        env     :Callable(EvoState,dict) -> float, optional
             Envelope structure model. Calculates and returns the envelope thickness.
 
-        core_model :Callable(EvoState,dict) -> float, optional
+        core    :Callable(EvoState,dict) -> float, optional
             Calculates and returns the core radius from its mass.
 
-        mass_loss :Callable(EvoState,dict) -> float, optional
+        mloss   :Callable(EvoState,dict) -> float, optional
             Calculates and returns the mass loss rate in grams/sec.
             Default is function that returns a mass loss of zero.
 
-        model_args :dict, optional
+        args    :dict, optional
             Additional parameters passed to the models above.
         """
-        self.model_args = {} if model_args is None else model_args
+        # Legacy parameter names
+        if star  is None:  star = star_model
+        if env   is None:  env  = envelope_model
+        if core  is None:  core = core_model
+        if mloss is None: mloss = mass_loss_model
+        if args  is None:  args = model_args
+
+        self.model_args = {} if args is None else args
         
-        if star_model is not None:
-            self.star_model = self.parse_star(star_model)
+        if star is not None:
+            self.star_model = self.parse_star(star)
             Planet._debug_print(
                 f"Using star model with {self.star_model['mass']:.2f} solar masses",
             )
         
-        if envelope_model is not None:
-            assert callable(envelope_model), "Envelope model must be a function"
-            self.envelope_model  = wrap_callback(envelope_model)
-            if hasattr(envelope_model, "__name__"):
-                Planet._debug_print(f"Using envelope model {envelope_model.__name__}")
+        if env is not None:
+            assert callable(env), "Envelope model must be a function"
+            self.envelope_model = wrap_callback(env)
+            if hasattr(env, "__name__"):
+                Planet._debug_print(f"Using envelope model {env.__name__}")
 
-        if core_model is not None:
-            assert callable(core_model), "Core model must be a function"
-            self.core_model  = wrap_callback(core_model)
-            if hasattr(core_model, "__name__"):
-                Planet._debug_print(f"Using core model {core_model.__name__}")
+        if core is not None:
+            assert callable(core), "Core model must be a function"
+            self.core_model = wrap_callback(core)
+            if hasattr(core, "__name__"):
+                Planet._debug_print(f"Using core model {core.__name__}")
 
-        if mass_loss_model is not None:
-            assert callable(mass_loss_model), "Mass loss model must be a function"
-            self.mass_loss_model  = wrap_callback(mass_loss_model)
-            if hasattr(mass_loss_model, "__name__"):
-                Planet._debug_print(f"Using mass loss model {mass_loss_model.__name__}")
+        if mloss is not None:
+            assert callable(mloss), "Mass loss model must be a function"
+            self.mass_loss_model = wrap_callback(mloss)
+            if hasattr(mloss, "__name__"):
+                Planet._debug_print(f"Using mass loss model {mloss.__name__}")
 
         return self
 
