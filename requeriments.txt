@@ -2,6 +2,5 @@ numpy
 uncertainties
 scipy
 astropy
-matplotlib
 pandas
 tqdm
