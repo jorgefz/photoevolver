@@ -6,6 +6,7 @@ import numpy as np
 from typing import Any, NoReturn
 from .utils import indexable
 
+@deprecated
 def NewFigure(
         rows  :int = 1,
         cols  :int = 1,
@@ -19,6 +20,7 @@ def NewFigure(
     )
     return fig, axs
 
+@deprecated
 def AxisLabels(
         xlabel :str = 'linear',
         ylabel :str = 'linear',
@@ -32,6 +34,7 @@ def AxisLabels(
     panel.set_xlabel(xlabel, fontsize = fontsize)
     panel.set_ylabel(ylabel, fontsize = fontsize)
     
+@deprecated
 def AxisScales(
         xscale :str = 'linear',
         yscale :str = 'linear',
@@ -44,9 +47,11 @@ def AxisScales(
     panel.set_xscale(xscale)
     panel.set_yscale(yscale)
 
+@deprecated
 def AxisLogs(panel :Any = None):
     AxisScales('log', 'log', panel)
 
+@deprecated
 def PanelLimits(
         xlims :list[float,2] = None,
         ylims :list[float,2] = None,
@@ -57,9 +62,11 @@ def PanelLimits(
     if xlims: xlim_fn(xlims)
     if ylims: ylim_fn(ylims)
 
+@deprecated
 def Tight() -> NoReturn:
     plt.tight_layout()
 
+@deprecated
 def CustomLegend(*elements :dict, panel :Any = None, **kwargs) -> NoReturn:
     """Provides custom line style objects to define the legend elements"""
     lines = [ Line2D([0], [0], **e) for e in elements]
@@ -68,6 +75,7 @@ def CustomLegend(*elements :dict, panel :Any = None, **kwargs) -> NoReturn:
     if 'shadow' not in kwargs: kwargs['shadow'] = False
     panel.legend(handles = lines, **kwargs)
 
+@deprecated
 def XTicks(
         ticks    :list[float] = None,
         panel    :Any = None,
@@ -81,6 +89,7 @@ def XTicks(
     if fontsize is not None:
         panel.tick_params(axis='x', which='both', labelsize=fontsize)
 
+@deprecated
 def YTicks(
         ticks    :list[float] = None,
         panel    :Any = None,
@@ -94,6 +103,7 @@ def YTicks(
     if fontsize is not None:
         panel.tick_params(axis='y', which='both', labelsize=fontsize)
 
+@deprecated
 def PanelTicks(
         xticks   :list[float] = None,
         yticks   :list[float] = None,
@@ -103,6 +113,7 @@ def PanelTicks(
     XTicks(xticks, panel=panel, fontsize=fontsize)
     YTicks(yticks, panel=panel, fontsize=fontsize)
 
+@deprecated
 def StylePanels(panels :list|Any = None, fontsize :int = 15) -> NoReturn:
     """Applies a custom figure style"""
     if panels is None:
