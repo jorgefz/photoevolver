@@ -11,6 +11,7 @@ from photoevolver.models.misc import (
 )
 from photoevolver.models.envelope import *
 from photoevolver.models.mloss import *
+from photoevolver.models.mloss_core_powered import massloss_core_powered
 from photoevolver.models.core import (
     core_zeng19_rock,
     core_zeng19_iron,
