@@ -1,12 +1,14 @@
 # Photoevolver
-[![Jupyter Notebooks](https://img.shields.io/badge/Jupyter-notebooks-lawngreen)](https://www.github.com/jorgefz/photoevolver/blob/main/examples)
-[![Coverage](https://img.shields.io/badge/Coverage-54%25-orange)]()
-[![Python](https://img.shields.io/badge/Python->=3.10-cornflowerblue)]()
+[![Jupyter Notebooks](https://img.shields.io/badge/Jupyter-notebooks-e67e22)](https://www.github.com/jorgefz/photoevolver/blob/main/examples)
+[![Coverage](https://img.shields.io/badge/Coverage-66%25-brightgreen)](./README.md)
+[![Python](https://img.shields.io/badge/Python->=3.10-cornflowerblue)](./README.md)
 [![Read the paper](https://img.shields.io/badge/Read-the%20paper-blue)](https://ui.adsabs.harvard.edu/abs/2023MNRAS.tmp.1197F/abstract)
 [![License](https://img.shields.io/badge/License-GNU%20GPL%20v3.0-mediumorchid)](https://www.github.com/jorgefz/photoevolver/blob/main/LICENSE)
 
 
-`photoevolver` is a Python module that evolves the gaseous envelope of planets backwards and forward in time, taking into account internal structure and cooling rate, atmospheric mass loss processes, and the stellar X-ray emission history.
+`photoevolver` is a Python module that simulates the atmospheric escape of extrasolar planets and their evolution.
+
+It can evolve the gaseous envelope of a planet backwards and forwards in time, taking into account its internal structure and cooling rate, atmospheric mass loss processes, and the stellar emission history.
 
 ## Minimal example
 ```python
@@ -18,10 +20,10 @@ planet = ph.Planet(mass = 5.0, radius = 2.0, period = 5.0)
 #                  M_earth,    R_earth,      days
 
 planet.set_models(
-    core_model      = ph.models.core_otegi20,
-    star_model      = mors.Star(Mstar = 1.0, percentile = 50.0),
-    envelope_model  = ph.models.envelope_chen16,
-    mass_loss_model = ph.models.massloss_energy_limited
+    core  = ph.models.core_otegi20,
+    env   = ph.models.envelope_chen16,
+    mloss = ph.models.massloss_energy_limited,
+    star  = mors.Star(Mstar = 1.0, percentile = 50.0)
 )
 
 # Returns pandas dataframe
@@ -36,59 +38,50 @@ plt.ylabel("Radius (Earth radii)")
 plt.show()
 ```
 
-See the jupyter notebooks on the folder `examples` for more information.
+Check out the folder [`examples`](./examples) for jupyter notebooks with examples.
 
 
 ## Installation
 
-Simply install the repository directly with pip:
+Download and install the repository with pip:
 ```bash
 pip install git+https://github.com/jorgefz/photoevolver.git
 ```
 
-You can now import the module and use it straight away:
+Install the following dependencies:
+```
+numpy
+uncertainties
+scipy
+astropy
+pandas
+tqdm
+```
+Alternatively, run `pip install -r requeriments.txt` to install them automatically.
+
+Import the module and use it straight away:
 ```python
 >>> import photoevolver as ph
 ```
 
-
 ## Scientific Background
 
-The Kepler telescope has found a surprising number of planets between the Earth and Neptune in size. These planets follow a bimodal (two-peaked) distribution in radii, with peaks at 1.5 and 2.4 Earth radii, and a *radius valley* at 1.8 Earth radii. The first peak is most likely populated by entirely rocky planets, whereas the second one consists of rocky cores with H/He-rich envelopes that can double the planet's radius and yet comprise only a few percent of its mass. This radius valley would be created by atmospheric mass loss processes that evaporate planetary atmospheres over time, completely stripping them in extreme cases (Fulton et al. 2017).
+In the past few decades, thousands of extrasolar planets have been discovered.
+Many of these planets are small, between Earth and Neptune in size, and orbit very closely to their stars. As a result, they receive large amounts of radiation, which can drive gas on their atmospheres to escape the planet's gravity.
+In some cases, these planets can be completely stripped of their atmospheres.
 
-One such process is *photoevaporation*, where stellar X-rays are readily absorbed by the upper layers of planetary atmospheres, which expand and escape the planet. Stellar X-rays are not constant, but tied to the star's rotation period. Faster rotators produce a greater X-ray emission. Stars also spin down with time, reducing their X-ray output by an order of magnitude within the first 1 Gyr of age (Wright et al. 2011).
-
-A description of a planet's evaporation past would thus require the planet's internal structure (and current amount of gas), the X-ray emission history of the host star, and a mass loss model, which relates the amount of input energy from X-rays to the resulting mass loss rate from the planet.
-
-## Dependencies, useful modules, and credits
-
-### Mors (optional)
-Stellar tracks code by Colin Johnstone (https://github.com/ColinPhilipJohnstone/Mors) described in the paper by Johnstone et al (2020).
-
-### EvapMass (already included)
-Thermal evolution code by James Owen (https://github.com/jo276/EvapMass), described in the paper Owen & Campos Estrada (2020). 
-This is already included in this repository, so there's no need to install it.
-
-### Kubyshkina & Fossati (2021) grid and interpolator (already included)
-Updated grid of planet parameters and mass loss rates based on the
-hydrodynamic simulations by Kubyshkina et al. (2018).
-Reference: https://ui.adsabs.harvard.edu/abs/2021RNAAS...5...74K/abstract).
-Zenodo repository: https://zenodo.org/record/4643823
-This work is licensed under the Creative Commons Attribution-NonCommercial 4.0 International Public License (https://creativecommons.org/licenses/by-nc/4.0/).
+`photoevolver` simulates the atmospheric escape from these planets across their lifetime and determines whether their atmospheres survive or are completely stripped by radiation from their host star.
+See [Fernández Fernández et al. (2023)](https://ui.adsabs.harvard.edu/abs/2023MNRAS.tmp.1197F/abstract) for more information.
 
 
-## References
+## Credit
 
-* [Johnstone et al. (2021)](https://ui.adsabs.harvard.edu/abs/2020arXiv200907695J/abstract)
-* [Lopez & Fortney (2014)](https://ui.adsabs.harvard.edu/abs/2014ApJ...792....1L/abstract)
-* [Chen & Rogers (2016)](https://ui.adsabs.harvard.edu/abs/2016ApJ...831..180C/abstract)
-* [Owen & Wu (2017)](https://ui.adsabs.harvard.edu/abs/2017ApJ...847...29O/abstract)
-* [Lecavelier des Etangs (2007)](https://ui.adsabs.harvard.edu/abs/2007A&A...461.1185L)
-* [Erkaev et al. (2007)](https://ui.adsabs.harvard.edu/abs/2007A%26A...472..329E/abstract)
-* [Kubyshkina et al. (2018)](https://ui.adsabs.harvard.edu/abs/2018ApJ...866L..18K/abstract)
-* [Wright et al. (2011)](https://ui.adsabs.harvard.edu/abs/2011ApJ...743...48W/abstract)
-* [Fulton et al. (2017)](https://ui.adsabs.harvard.edu/abs/2017AJ....154..109F/abstract)
-* [Owen & Campos Estrada (2021)](https://ui.adsabs.harvard.edu/abs/2020MNRAS.491.5287O/abstract)
-* [Otegi et al. (2021)](https://ui.adsabs.harvard.edu/abs/2020A%26A...634A..43O/abstract)
-* [Salz et al. (2016)](https://ui.adsabs.harvard.edu/abs/2016A%26A...585L...2S/abstract)
-* [Kubyshkina & Fossati (2021)](https://ui.adsabs.harvard.edu/abs/2021RNAAS...5...74K/abstract)
+This repository uses datasets and models from the following sources:
+
+* Mass loss model by [Kubyshkina & Fossati (2021)](https://ui.adsabs.harvard.edu/abs/2021RNAAS...5...74K/abstract), whose grid is available at this [Zenodo repository](https://zenodo.org/record/4643823), which is licensed under the [Creative Commons Attribution-NonCommercial 4.0 International Public License](https://creativecommons.org/licenses/by-nc/4.0/).
+* Envelope structure model by [Owen & Campos Estrada (2020)](https://ui.adsabs.harvard.edu/abs/2020MNRAS.491.5287O/abstract), available at this [GitHub repository](https://github.com/jo276/EvapMass).
+* Stellar sequences by Eric Mamajek, available at this [link](http://www.pas.rochester.edu/~emamajek/EEM_dwarf_UBVIJHK_colors_Teff.txt).
+* Internal structure models by [Zeng et al. (2019)](https://ui.adsabs.harvard.edu/abs/2019PNAS..116.9723Z/abstract) available at this [link](https://lweb.cfa.harvard.edu/~lzeng/planetmodels.html).
+
+For the stellar emission history, it is recommended to use the models by [Johnstone et al. (2021)](https://ui.adsabs.harvard.edu/abs/2020arXiv200907695J/abstract), which you can install from this [GitHub repository](https://github.com/ColinPhilipJohnstone/Mors).
+
