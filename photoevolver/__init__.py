@@ -17,7 +17,7 @@ from photoevolver import settings
 
 from photoevolver import (
     models, cmodels,
-    physics, utils, plotter,
+    physics, utils,
     evostate, integrator, planet
 )
 
