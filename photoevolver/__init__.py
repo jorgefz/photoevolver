@@ -13,7 +13,6 @@ import os
 import platform
 
 from photoevolver import settings
-# from photoevolver.startable import StarTable
 
 from photoevolver import (
     models, cmodels,
