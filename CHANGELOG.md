@@ -3,7 +3,12 @@
 
 # To do
 - Refactor `star_pecaut13` model
-- Move core powered mass loss model from legacy to models and refactor
+- Add tests
+- Improve tutorials
+- Improve readme
+
+# v2.5
+- Added core-powered mass loss
 
 # v2.4
 - Moved models to subfolder and separated them into files
