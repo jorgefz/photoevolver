@@ -10,6 +10,7 @@
 # v2.5
 - Added core-powered mass loss
 - Removed plotter, dev, and legacy functions
+- Updated jupyter notebooks and readme
 
 # v2.4
 - Moved models to subfolder and separated them into files
