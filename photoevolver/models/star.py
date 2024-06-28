@@ -304,7 +304,7 @@ class star_spada13:
 		# Create interpolation function
 		points = star_spada13._table[['Mstar','Age']].to_numpy()
 		values = star_spada13._table[field]
-		interp = LinearNDInterpolator(points, values)
+		interp = LinearNDInterpolator(points, values, rescale=True)
 		star_spada13._interp_cache[field] = interp
 
 		return interp(mstar, age)

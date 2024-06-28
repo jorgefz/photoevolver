@@ -11,6 +11,7 @@
 - Added core-powered mass loss
 - Removed plotter, dev, and legacy functions
 - Updated jupyter notebooks and readme
+- Improved model data for star_spada13
 
 # v2.4
 - Moved models to subfolder and separated them into files
