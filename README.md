@@ -82,6 +82,7 @@ This repository uses datasets and models from the following sources:
 * Envelope structure model by [Owen & Campos Estrada (2020)](https://ui.adsabs.harvard.edu/abs/2020MNRAS.491.5287O/abstract), available at this [GitHub repository](https://github.com/jo276/EvapMass).
 * Stellar sequences by Eric Mamajek, available at this [link](http://www.pas.rochester.edu/~emamajek/EEM_dwarf_UBVIJHK_colors_Teff.txt).
 * Internal structure models by [Zeng et al. (2019)](https://ui.adsabs.harvard.edu/abs/2019PNAS..116.9723Z/abstract) available at this [link](https://lweb.cfa.harvard.edu/~lzeng/planetmodels.html).
+* Stellar evolution models by [Spada et al. (2013)]()
 
 For the stellar emission history, it is recommended to use the models by [Johnstone et al. (2021)](https://ui.adsabs.harvard.edu/abs/2020arXiv200907695J/abstract), which you can install from this [GitHub repository](https://github.com/ColinPhilipJohnstone/Mors).
 
