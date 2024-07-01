@@ -196,10 +196,40 @@ class star_pecaut13:
 	http://www.pas.rochester.edu/~emamajek/EEM_dwarf_UBVIJHK_colors_Teff.txt
 	Eric Mamajek
 	Version 2022.04.16
+
+	Fields
+	------
+		spt   : str, Spectral type
+		lbol  : float, Bolometric luminosity in Lsun
+		b_v   : float, B-V color
+		teff  : float, Effective temperature in K
+		bp_rp : float, Bp-Rp color
+		g_rp  : float, G-Rp color
+		Mg    : float, Absolute G magnitude
+		v_k   : float, V-K color
+		rstar : float, Stellar radius in Rsun
+		mstar : float, Stellar mass in Msun
 	"""
 
 	_table :pd.DataFrame = None
 	_fn_cache :dict[dict[callable]] = {}
+
+	@staticmethod
+	def _load_dataset():
+		""" Loads dataset from disk, renames some columns, and calculates others """
+		dset = pd.read_csv(_MODEL_DATA_DIR+'/pecaut13/pecaut13.csv', engine='c')
+		dset['lbol'] = 10**dset['logL']
+		rename = {
+			'SpT'   : 'spt',   'Teff'  : 'teff',
+			'B-V'   : 'b_v',   'V-Ks'  : 'v_k',
+			'Bp-Rp' : 'bp_rp', 'G-Rp'  : 'g_rp',
+			'R_Rsun': 'rstar', 'Msun'  : 'mstar',
+			'M_G'   : 'Mg'
+		}
+		keep = list(rename.values()) + ['lbol']
+		dset = dset.rename(columns = rename)
+		dset = dset.loc[:, keep]
+		return dset
 
 	@staticmethod
 	def _check_dataset_loaded():
@@ -208,7 +238,15 @@ class star_pecaut13:
 		Load only when class is used.
 		"""
 		if star_pecaut13._table is None:
-			star_pecaut13._table = pd.read_csv(_MODEL_DATA_DIR+'/pecaut13/pecaut13.csv')
+			star_pecaut13._table = star_pecaut13._load_dataset()
+
+	@staticmethod
+	def _check_input(mapping :dict):
+		""" Ensures only one valid input stellar parameter is provided """
+		mapping.pop('spt', None) # Interpolating using spt not supported
+		if len(mapping) != 1:
+			raise KeyError("[star_pecaut13] Multiple/none valid parameters provided")
+		return list(mapping.items())[0]
 
 	@staticmethod
 	def fields() -> list[str]:
@@ -219,42 +257,65 @@ class star_pecaut13:
 		return star_pecaut13._table.columns.tolist()
 
 	@staticmethod
-	def spt(field: str, value: float) -> str:
-		"""
-		Estimates the spectral type from a given parameter.
-		"""
+	def spt(**kwargs: dict) -> str:
+		""" Determines spectral type from input stellar parameter """
+		field, value = star_pecaut13._check_input(kwargs)
 		star_pecaut13._check_dataset_loaded()
 		if field not in star_pecaut13.fields():
-			raise KeyError(f"[startable] Unknown field '{field}'")
+			raise KeyError(f"[star_pecaut13] Unknown field '{field}'")
 		idx = star_pecaut13._table[field].sub(value).abs().idxmin()
 		row = star_pecaut13._table.loc[[idx]]
-		return row['SpT'].iloc[0]
-
-	@staticmethod
-	def interpolate(field: str, value: float) -> dict:
-		"""
-		Interpolates all stellar parameters given a value for one of them.
-		Spectral type is not supported as an input field.
-		"""
-		star_pecaut13._check_dataset_loaded()
-		if field not in star_pecaut13.fields():
-			raise KeyError(f"[startable] Unknown field '{field}'")
-
-		fields = star_pecaut13.fields()[1:-1]
-		row = {
-			key: star_pecaut13.get(key, field, value)
-			for key in fields
-		}
-		row['SpT'] = star_pecaut13.spt(field, value)
-		return row
+		return row['spt'].iloc[0]
 
 	@staticmethod
 	def get(field :str, using :str, value :str) -> float:
+		""" Interpolates between two stellar parameters from their column names """
 		star_pecaut13._check_dataset_loaded()
-		from_col   = star_pecaut13._table[using].to_numpy()
-		to_col = star_pecaut13._table[field].to_numpy()
-		fn = ScipyInterp1d(x = from_col, y = to_col, kind='linear')
-		return float(fn(value))
+		if field not in star_pecaut13.fields():
+			raise KeyError(f"[star_pecaut13] Unknown field '{field}'")
+		if using not in star_pecaut13.fields():
+			raise KeyError(f"[star_pecaut13] Unknown field '{using}'")
+		from_col = star_pecaut13._table[using].to_numpy()
+		to_col   = star_pecaut13._table[field].to_numpy()
+		fn = ScipyInterp1d(x = from_col, y = to_col, kind='linear', bounds_error=False, fill_value='extrapolate')
+		return fn(value)
+
+	@staticmethod
+	def star(**kwargs :dict) -> dict:
+		"""
+		Returns all stellar parameters (except spectral type) from an input parameter.
+		"""
+		key, value = star_pecaut13._check_input(kwargs)
+		cols = star_pecaut13.fields()
+		row = {
+			field: star_pecaut13.get(key, field, value)
+			for field in cols if field != 'spt'
+		}
+		return row
+
+	@staticmethod
+	def lbol(**kwargs :dict):
+		""" Return bolometric luminosity from an input stellar parameter """
+		key, value = star_pecaut13._check_input(kwargs)
+		return star_pecaut13.get(field='lbol', using=key, value=value)
+
+	@staticmethod
+	def teff(**kwargs :dict):
+		""" Return effective temperature from an input stellar parameter """
+		key, value = star_pecaut13._check_input(kwargs)
+		return star_pecaut13.get(field='teff', using=key, value=value)
+
+	@staticmethod
+	def rstar(**kwargs :dict):
+		""" Return stellar radius from an input stellar parameter """
+		key, value = star_pecaut13._check_input(kwargs)
+		return star_pecaut13.get(field='rstar', using=key, value=value)
+
+	@staticmethod
+	def mstar(**kwargs :dict):
+		""" Return stellar mass from an input stellar parameter """
+		key, value = star_pecaut13._check_input(kwargs)
+		return star_pecaut13.get(field='mstar', using=key, value=value)
 
 
 
