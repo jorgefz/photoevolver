@@ -1,5 +1,6 @@
 import pytest
 import numpy as np
+import pandas as pd
 import uncertainties as uncert
 
 from photoevolver import models
@@ -173,4 +174,35 @@ def test_euv_king18_model():
         models.euv_king18(lx=1e30, rstar=1.0, energy="invalid")
 
 
-    
+def test_star_pecaut13():
+    # Test load
+    assert models.star_pecaut13._table is None
+
+    fields = models.star_pecaut13.fields()
+    assert isinstance(fields, list)
+    assert isinstance(models.star_pecaut13._table, pd.DataFrame)
+
+    # Helper functions
+    tol = 0.05
+    spt_opts = ['G3V', 'G2V']
+    params = {'mstar':1.0, 'rstar':1.0, 'lbol':1.0, 'teff':5770}
+    funcs = {
+        'mstar' : models.star_pecaut13.mstar,
+        'rstar' : models.star_pecaut13.rstar,
+        'lbol'  : models.star_pecaut13.lbol,
+        'teff'  : models.star_pecaut13.teff
+    }
+
+    for n,fn in funcs.items():
+        for m,par in params.items():
+            assert np.isclose( fn(**{m:par}), params[n], rtol = tol)
+
+    # All params
+    for n,p in params.items():
+        ret_params = models.star_pecaut13.star(**{n:p})
+        for k,v in params.items():
+            assert np.isclose(ret_params[k], v, rtol = tol)
+
+    # Spectral type
+    for k,p in params.items():
+        assert models.star_pecaut13.spt(**{k:p}) in spt_opts
