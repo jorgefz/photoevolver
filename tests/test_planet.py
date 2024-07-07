@@ -379,7 +379,7 @@ def test_planet_evolve():
     step  = 1.0 
     evo = planet.evolve(start=start, end=end, step=step)
     sim_time = end - start - step
-    assert planet.mass_loss_model() == 0.0, "Default mass loss does not return zero"
+    assert planet.mass_loss_model(None, None) == 0.0, "Default mass loss does not return zero"
     assert isinstance(evo, pd.DataFrame)
     assert evo['age'].iloc[-1] == evo['age'].iloc[0] + sim_time
     assert evo['radius'].iloc[0] > evo['radius'].iloc[-1]
