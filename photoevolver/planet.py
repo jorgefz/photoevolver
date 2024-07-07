@@ -21,9 +21,12 @@ def _star_model_wrapper(method :callable, state :EvoState, kwargs :dict):
     return method(state.age)
 
 def _default_core_model(state :EvoState, args :dict):
-    """ Returns preset core radius """
+    """ Returns preset core radius. Used when both core mass and radius are provided """
     return state.rcore
 
+def _default_mloss_model(state: EvoState, args :dict):
+    """ Returns mass loss of zero. Defined at file level to avoid issues with multithreading """
+    return 0.0
 
 def parse_star(star :dict|typing.Any) -> dict:
     """
@@ -644,8 +647,9 @@ class Planet:
         assert start > 0.0 and end > 0.0, "Invalid initial or final ages"
 
         # Default evaporation model always returns a mass loss rate of zero
+        # TODO: move to set_models method
         if self.mass_loss_model is None:
-            self.mass_loss_model = lambda *args, **kwargs: 0.0
+            self.mass_loss_model = _default_mloss_model
             self.mass_loss_model.__name__ = "zero_mass_loss"
         
         # Solve state at starting age
