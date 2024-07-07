@@ -20,6 +20,11 @@ def _star_model_wrapper(method :callable, state :EvoState, kwargs :dict):
     """ Wraps mors.Star functions to take an EvoState """
     return method(state.age)
 
+def _default_core_model(state :EvoState, args :dict):
+    """ Returns preset core radius """
+    return state.rcore
+
+
 def parse_star(star :dict|typing.Any) -> dict:
     """
     Converts an input stellar model into internal format.
@@ -443,6 +448,7 @@ class Planet:
 
         core    :Callable(EvoState,dict) -> float, optional
             Calculates and returns the core radius from its mass.
+            Defaults to returning input core radius if both core mass and radius are provided.
 
         mloss   :Callable(EvoState,dict) -> float, optional
             Calculates and returns the mass loss rate in grams/sec.
@@ -477,6 +483,10 @@ class Planet:
             self.core_model = wrap_callback(core)
             if hasattr(core, "__name__"):
                 Planet._debug_print(f"Using core model {core.__name__}")
+        else:
+            if (self.initial_state.mcore is not None and self.initial_state.rcore is not None):
+                self.core_model = _default_core_model
+                Planet._debug_print("Using core model fixed to input core mass and radius")
 
         if mloss is not None:
             assert callable(mloss), "Mass loss model must be a function"
@@ -517,8 +527,9 @@ class Planet:
         -------
             state :EvoState, solved internal structure of the planet
         """
-        assert self.star_model and self.envelope_model and self.core_model, \
-            "Models have not been set!"
+        if self.star_model     is None: raise ValueError("Stellar model not provided")
+        if self.envelope_model is None: raise ValueError("Envelope model not provided")
+        if self.core_model     is None: raise ValueError("Core model not provided")
 
         # Run version that supports uncertainties
         # Not to be used for evolving!
