@@ -268,54 +268,63 @@ class star_pecaut13:
 		return row['spt'].iloc[0]
 
 	@staticmethod
-	def get(field :str, using :str, value :str) -> float:
-		""" Interpolates between two stellar parameters from their column names """
+	def get(field :str, extrapolate :bool = False, **kwargs :dict) -> float:
+		"""
+		Uses an input stellar parameter to calculate another parameter `field`.
+		E.g. calculate stellar mass (`mstar`) from a given Bp-Rp color.
+		"""
 		star_pecaut13._check_dataset_loaded()
+		key, value = star_pecaut13._check_input(kwargs)
 		if field not in star_pecaut13.fields():
-			raise KeyError(f"[star_pecaut13] Unknown field '{field}'")
-		if using not in star_pecaut13.fields():
-			raise KeyError(f"[star_pecaut13] Unknown field '{using}'")
-		from_col = star_pecaut13._table[using].to_numpy()
+			raise KeyError(f"[star_pecaut13] Unknown stellar parameter '{field}'")
+		if key not in star_pecaut13.fields():
+			raise KeyError(f"[star_pecaut13] Unknown stellar parameter '{key}'")
+		from_col = star_pecaut13._table[key].to_numpy()
 		to_col   = star_pecaut13._table[field].to_numpy()
-		fn = ScipyInterp1d(x = from_col, y = to_col, kind='linear', bounds_error=False, fill_value='extrapolate')
+
+		fill_value = 'extrapolate' if extrapolate is True else np.nan
+		fn = ScipyInterp1d(
+			x = from_col, y = to_col, kind='linear',
+			bounds_error=False, fill_value = fill_value
+		)
 		return fn(value)
 
 	@staticmethod
-	def star(**kwargs :dict) -> dict:
+	def star(extrapolate :bool = False, **kwargs :dict) -> dict:
 		"""
 		Returns all stellar parameters (except spectral type) from an input parameter.
 		"""
 		key, value = star_pecaut13._check_input(kwargs)
-		cols = star_pecaut13.fields()
-		row = {
-			field: star_pecaut13.get(key, field, value)
-			for field in cols if field != 'spt'
+		fields = star_pecaut13.fields()
+		params = {
+			key: star_pecaut13.get(field, **{key:value}, extrapolate=extrapolate)
+			for field in fields if field != 'spt'
 		}
-		return row
+		return params
 
 	@staticmethod
-	def lbol(**kwargs :dict):
+	def lbol(extrapolate :bool = False, **kwargs :dict):
 		""" Return bolometric luminosity from an input stellar parameter """
 		key, value = star_pecaut13._check_input(kwargs)
-		return star_pecaut13.get(field='lbol', using=key, value=value)
+		return star_pecaut13.get(field='lbol', **{key:value}, extrapolate=extrapolate)
 
 	@staticmethod
-	def teff(**kwargs :dict):
+	def teff(extrapolate :bool = False, **kwargs :dict):
 		""" Return effective temperature from an input stellar parameter """
 		key, value = star_pecaut13._check_input(kwargs)
-		return star_pecaut13.get(field='teff', using=key, value=value)
+		return star_pecaut13.get(field='teff', **{key:value}, extrapolate=extrapolate)
 
 	@staticmethod
-	def rstar(**kwargs :dict):
+	def rstar(extrapolate :bool = False, **kwargs :dict):
 		""" Return stellar radius from an input stellar parameter """
 		key, value = star_pecaut13._check_input(kwargs)
-		return star_pecaut13.get(field='rstar', using=key, value=value)
+		return star_pecaut13.get(field='rstar', **{key:value}, extrapolate=extrapolate)
 
 	@staticmethod
-	def mstar(**kwargs :dict):
+	def mstar(extrapolate :bool = False, **kwargs :dict):
 		""" Return stellar mass from an input stellar parameter """
 		key, value = star_pecaut13._check_input(kwargs)
-		return star_pecaut13.get(field='mstar', using=key, value=value)
+		return star_pecaut13.get(field='mstar', **{key:value}, extrapolate=extrapolate)
 
 
 
