@@ -297,7 +297,7 @@ class star_pecaut13:
 		key, value = star_pecaut13._check_input(kwargs)
 		fields = star_pecaut13.fields()
 		params = {
-			key: star_pecaut13.get(field, **{key:value}, extrapolate=extrapolate)
+			field: star_pecaut13.get(field, **{key:value}, extrapolate=extrapolate)
 			for field in fields if field != 'spt'
 		}
 		return params
