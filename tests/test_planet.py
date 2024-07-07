@@ -172,6 +172,27 @@ def test_planet_set_models():
     assert planet.mass_loss_model is not None, "Mass loss model updated to None"
 
 
+def test_planet_default_core_model():
+    # Ensure it uses default core model when both core mass and core radius are provided
+    planet = Planet(fenv = 0.01, period = 10.0, mcore = 5.0, rcore = 1.6)
+    planet.set_models(star = STAR, env = ph.models.envelope_chen16, core = None)
+    assert planet.core_model == ph.planet._default_core_model
+    _ = planet.solve_structure(age = 100)
+
+    # Ensure it doesn't work when either core mass or core radius are provided
+    planet = Planet(fenv = 0.01, period = 10.0, mcore = 5.0)
+    planet.set_models(star = STAR, env = ph.models.envelope_chen16, core = None)
+    assert planet.core_model is None
+    with pytest.raises(ValueError):
+        _ = planet.solve_structure(age = 100)
+
+    # Ensure input core model is not overwritten by default model
+    planet = Planet(fenv = 0.01, period = 10.0, mcore = 5.0, rcore = 1.6)
+    core_model = lambda mcore: mcore**(1/3)
+    planet.set_models(star = STAR, env = ph.models.envelope_chen16, core = core_model)
+    assert planet.core_model is not None and planet.core_model != ph.planet._default_core_model
+
+
 def test_planet_use_models():
     planet = Planet(mass = 5.0, radius = 2.0)
     planet.set_models(
