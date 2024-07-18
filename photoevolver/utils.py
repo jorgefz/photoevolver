@@ -3,8 +3,22 @@ Utility functions
 """
 import typing
 import contextlib
+import functools
 import os
 import numpy as np
+
+
+class HelperFunctions:
+    """ Helper functions to avoid using lambdas (which multiprocessing can't handle) """
+
+    @staticmethod
+    def _fixed_value(value, *args, **kwargs):
+        return value
+
+    @staticmethod
+    def fixed_value(value):
+        """ Returns function that always returns a value """
+        return functools.partial(HelperFuncs._fixed_value_function, value=value)
 
 
 def kprint(**kwargs) -> None:
