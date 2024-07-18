@@ -2,9 +2,11 @@
 
 from photoevolver.settings import _MODEL_DATA_DIR
 from photoevolver import physics
+from photoevolver.utils import HelperFunctions
 
 import numpy as np
 import pandas as pd
+import functools
 from scipy.interpolate import interp1d as ScipyInterp1d
 from scipy.interpolate import LinearNDInterpolator
 
@@ -55,6 +57,96 @@ def euv_king18(
 	feuv_at_rstar = fx_at_rstar * xratio
 	leuv = feuv_at_rstar * 4.0 * np.pi * (rstar * conv)**2
 	return leuv
+
+
+def _xray_evo_powerlaw_eqn(
+		age    :float,
+		lbol   :float,
+		rx_sat :float,
+		t_sat  :float,
+		expn   :float,
+		*args, **kwargs
+	):
+	""" Saturated power law for X-ray evolution """
+	if age < t_sat:
+		return rx_sat * lbol
+	norm = rx_sat / t_sat**expn
+	return lbol * norm * age**expn
+
+def xray_evo_powerlaw(
+		lbol   :float,
+		rx_sat :float,
+		t_sat  :float,
+		expn   :float,
+	):
+	"""
+	Simple model for the X-ray evolution of a star,
+	with a saturated phase with Lx/Lbol = `rx_sat` that lasts until age `t_sat`,
+	and then decays as a power law with exponent `expn`.
+	Returns a function that, when called with an age, returns the X-ray luminosity at that age.
+
+	Parameters
+	----------
+		lbol    :float, stellar bolometric luminosity in erg/s
+		rx_sat  :float, saturated x-ray activity level (Lx/Lbol)
+		t_sat   :float, age at which star becomes unsaturated in Myr
+		expn    :float, power law index for unsaturated phase
+
+	Returns
+	-------
+		lx_evo  :callable, function that that returns the X-ray luminosity at a given age.
+
+	Example
+	-------
+		lx_evo = ph.models.xray_evo_powerlaw(mstar=1.0, lbol=1e33, rx_sat=1e-3, t_sat=100, exp=-2)
+		lx = lx_evo(age = 100)
+	"""
+	evo_fn = functools.partial(_xray_evo_powerlaw_eqn, lbol=lbol, t_sat=t_sat, rx_sat=rx_sat, expn=expn)
+	evo_fn = np.vectorize(evo_fn)
+	evo_fn.__name__ = f"xray_evo_powerlaw(age :float, *args, **kwargs)"
+	return evo_fn
+	
+
+def xray_evo_jackson12(lbol :float, bv_color :float):
+	"""
+	X-ray evolution models by Jackson et al. (2012).
+
+	Parameters
+	----------
+		lbol     :float, bolometric luminosity of the star in erg/s.
+		bv_color :float, B-V colour of the star
+
+	Returns
+	-------
+		lx_evo   : callable that returns X-ray luminosity (erg/s) at a given age (Myr).
+
+	Example
+	-------
+		lx_evo = xray_evo_jackson12(lbol = 3.8e33, bv_color = 0.71) # Sun-like star
+		lx = lx_evo(age = 100) # X-ray luminosity at 100 Myr
+	"""
+	model_params = {
+		'bv_min'    : [ 0.290, 0.450, 0.565, 0.675, 0.790, 0.935, 1.275],
+		'bv_max'    : [ 0.450, 0.565, 0.675, 0.790, 0.935, 1.275, 1.410],
+		'log_rx_sat': [-4.28, -4.24, -3.67, -3.71, -3.36, -3.35, -3.14],
+		'log_t_sat' : [ 7.87,  8.35,  7.84,  8.03,  7.90,  8.28,  8.21],
+		'expn'      : [-1.22, -1.24, -1.13, -1.28, -1.40, -1.09, -1.18]
+	}
+
+	# Find matching model for input B-V colour
+	model_index = None
+	for i, (bvmin, bvmax) in enumerate(zip(model_params['bv_min'], model_params['bv_max'])):
+		if bvmin <= bv_color < bvmax:
+			model_index = i
+			break
+	if model_index is None:
+		raise ValueError(f"[xray_evo_jackson12] Input B-V color ({bv_color}) not covered by Jackson+12 models")
+
+	rx_sat = 10**model_params['log_rx_sat'][i]
+	t_sat  = 10**model_params['log_t_sat'][i] / 1e6 # yr to Myr
+	expn   = model_params['expn'][i]
+	lx_evo = xray_evo_powerlaw(lbol=lbol, rx_sat=rx_sat, t_sat=t_sat, expn=expn)
+	return lx_evo
 
 
 def rossby_wright11(prot :float, mstar :float = None, vk :float = None):
