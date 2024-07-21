@@ -211,7 +211,7 @@ def solve_planet_from_mass_radius(
 
 
 
-def solve_with_errors(
+def solve_structure_with_errors(
         planet     :'Planet',
         age        :float,
         fenv_guess :float = 0.01,
@@ -537,7 +537,7 @@ class Planet:
         # Run version that supports uncertainties
         # Not to be used for evolving!
         if errors is True:
-            result, success = solve_with_errors(
+            result, success = solve_structure_with_errors(
                 planet = self,
                 age = age,
                 model_kw = self.model_args,
@@ -548,7 +548,7 @@ class Planet:
                     "Warning! Failed to solve for planet structure with uncertainties.",
                     f"-> {result}"
                 )
-            return result
+            return EvoState.from_dict(result)
 
         state       = self.initial_state.copy()
         state.mstar = self.star_model['mass']
@@ -603,6 +603,42 @@ class Planet:
                 "Either mass and radius,"
                 "or core and envelope mass must be provided"
             )
+
+    def mloss_rate(
+            self,
+            age    :float,
+            errors :bool = False,
+            error_kw :dict = None
+        ) -> float:
+        """
+        Returns the mass loss rate on the planet at a given age.
+
+        Parameters
+        ----------
+            age  :float, planet age in Myr at which to compute the mass loss
+            errors   :bool, whether to compute the mass loss rate with uncertainties.
+            error_kw :dict, arguments to pass to models to signal use of uncertainties.
+
+        Returns
+        -------
+        mloss :float, mass loss rate on the planet in g/s
+        """
+        if self.mass_loss_model is None:
+            return None
+        
+        @uwrap
+        def uncert_wrapper(**kwargs):
+            return self.mass_loss_model(EvoState.from_dict(kwargs), self.model_args)
+
+        state = self.solve_structure(age = age, errors = errors, error_kw = error_kw)
+        state.lx = self.star_model['lx'](state, self.model_args)
+        state.leuv = self.star_model['leuv'](state, self.model_args)
+        state.lbol = self.star_model['lbol'](state, self.model_args)
+        
+        if errors is True:
+            return uncert_wrapper(**state.asdict())
+        return self.mass_loss_model(state, self.model_args)
+
 
     def evolve(
             self,
