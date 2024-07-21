@@ -97,7 +97,7 @@ def test_solve_with_errors():
         star_model = STAR
     )
     
-    solution, success = ph.planet.solve_with_errors(
+    solution, success = ph.planet.solve_structure_with_errors(
         planet = uplanet,
         age = age,
         error_kw = {'ot20_errors': True},
@@ -123,7 +123,7 @@ def test_solve_with_errors():
     # Ensure you can define period instead of separation
     uplanet.initial_state.period = 10.0
     uplanet.initial_state.sep = None
-    solution, success = ph.planet.solve_with_errors(
+    solution, success = ph.planet.solve_structure_with_errors(
         planet = uplanet,
         age = age,
         error_kw = {'ot20_errors': True},
