@@ -2,7 +2,6 @@
 # photoevolver
 
 # To do
-- Refactor `star_pecaut13` model
 - Add tests
 - Improve tutorials
 - Improve readme
@@ -13,6 +12,7 @@
 - Updated jupyter notebooks and readme
 - Improved model data for star_spada13
 - Added power law x-ray evolution models, including Jackson+12.
+- Added function to planet class to compute mass loss rate with uncertainties.
 
 # v2.4
 - Moved models to subfolder and separated them into files
