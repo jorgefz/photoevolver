@@ -8,7 +8,7 @@
 
 `photoevolver` is a Python module that simulates the atmospheric escape of extrasolar planets and their evolution.
 
-It can evolve the gaseous envelope of a planet backwards and forwards in time, taking into account its internal structure and cooling rate, atmospheric mass loss processes, and the stellar emission history.
+It can evolve the gaseous atmosphere of a planet backwards and forwards in time, taking into account its internal structure and cooling rate, atmospheric mass loss processes, and the stellar emission history.
 
 ## Minimal example
 ```python
@@ -64,11 +64,12 @@ Import the module and use it straight away:
 >>> import photoevolver as ph
 ```
 
-## Scientific Background
+## Scientific background
 
 In the past few decades, thousands of extrasolar planets have been discovered.
-Many of these planets are small, between Earth and Neptune in size, and orbit very closely to their stars. As a result, they receive large amounts of radiation, which can drive gas on their atmospheres to escape the planet's gravity.
-In some cases, these planets can be completely stripped of their atmospheres.
+Many of these planets are small, between Earth and Neptune in size, and orbit very close to their stars, well within the orbit of Mercury in the Solar System.
+As a result, these planets receive large amounts of radiation from their stars, particularly X-rays and UV, which can "erode" the large atmospheres of these planets.
+Over time, some of these planets can even be completely stripped of their atmospheres, down to barren rocky worlds.
 
 `photoevolver` simulates the atmospheric escape from these planets across their lifetime and determines whether their atmospheres survive or are completely stripped by radiation from their host star.
 See [Fernández Fernández et al. (2023)](https://ui.adsabs.harvard.edu/abs/2023MNRAS.tmp.1197F/abstract) for more information.
