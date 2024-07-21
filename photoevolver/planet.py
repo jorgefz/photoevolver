@@ -607,7 +607,9 @@ class Planet:
     def mloss_rate(
             self,
             age    :float,
-            errors :bool = False,
+            lx     :float = None,
+            leuv   :float = None,
+            errors :bool  = False,
             error_kw :dict = None
         ) -> float:
         """
@@ -616,6 +618,8 @@ class Planet:
         Parameters
         ----------
             age  :float, planet age in Myr at which to compute the mass loss
+            lx   :float (optional), X-ray luminosity of the host star. Overrides stellar model.
+            lx   :float (optional), EUV luminosity of the host star. Overrides stellar model.
             errors   :bool, whether to compute the mass loss rate with uncertainties.
             error_kw :dict, arguments to pass to models to signal use of uncertainties.
 
@@ -631,8 +635,8 @@ class Planet:
             return self.mass_loss_model(EvoState.from_dict(kwargs), self.model_args)
 
         state = self.solve_structure(age = age, errors = errors, error_kw = error_kw)
-        state.lx = self.star_model['lx'](state, self.model_args)
-        state.leuv = self.star_model['leuv'](state, self.model_args)
+        state.lx   = self.star_model['lx'](state, self.model_args)   if lx   is None else lx
+        state.leuv = self.star_model['leuv'](state, self.model_args) if leuv is None else leuv
         state.lbol = self.star_model['lbol'](state, self.model_args)
         
         if errors is True:
