@@ -15,5 +15,5 @@ ext_cmodels = setuptools.Extension(
     include_dirs = [ext_path]   
 )
 
-setuptools.setup(ext_modules=[ext_cmodels])
+setuptools.setup(ext_modules=[ext_cmodels], include_package_data=True)
 

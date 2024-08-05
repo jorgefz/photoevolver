@@ -1,2 +1,2 @@
-include photoevolver/K18grid/*
-include photoevolver/model_data/*
+graft photoevolver/K18grid
+graft photoevolver/model_data
